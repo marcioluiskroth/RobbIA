@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RobbIA — Modo de Teste</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#F1F5F9; --text:#1E293B; --textMuted:#475569;
+    --graphite:#334155; --cyan:#06B6D4; --cyanText:#0E7490;
+    --st-ativo:#0891B2; --st-concluido:#15803D; --st-erro:#B91C1C;
+    --st-aguardando:#B45309; --st-pensando:#0E7490; --st-ocioso:#64748B;
+    --border:#E2E8F0; --border-strong:#CBD5E1;
+    --radius:8px; --radius-sm:4px; --pill:9999px;
+    --shadow-raised:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.10);
+    --shadow-overlay:0 8px 24px rgba(15,23,42,.18);
+    --focus:#0E7490;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Inter',system-ui,sans-serif;font-weight:400;font-size:16px;
+    background:var(--surface);color:var(--text);line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace;}
+  h1,h2,h3{margin:0;font-weight:500;}
+  button{font-family:inherit;cursor:pointer;}
+  /* visible focus ring */
+  a:focus-visible,button:focus-visible,[tabindex]:focus-visible,summary:focus-visible{
+    outline:2px solid var(--focus);outline-offset:2px;border-radius:var(--radius-sm);
+  }
+
+  /* ---------- App shell ---------- */
+  .app{max-width:1280px;margin:0 auto;padding:24px;}
+
+  /* ---------- Header strip ---------- */
+  .header{
+    background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow-raised);padding:20px 24px;display:flex;align-items:center;
+    gap:24px;flex-wrap:wrap;
+  }
+  .test-badge{
+    display:inline-flex;align-items:center;gap:8px;background:var(--graphite);color:#fff;
+    font-weight:500;font-size:13px;padding:6px 14px;border-radius:var(--pill);
+    letter-spacing:.02em;
+  }
+  .test-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);
+    box-shadow:0 0 0 0 rgba(6,182,212,.5);animation:pulse-dot 2s infinite;}
+  .harness-meta{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .harness-meta .label{font-size:13px;color:var(--textMuted);}
+  .harness-meta h1{font-size:20px;line-height:1.25;}
+  .harness-meta .id{font-size:12px;color:var(--textMuted);margin-top:2px;}
+  .header-spacer{flex:1 1 auto;}
+
+  /* Mascot core */
+  .mascot{display:flex;align-items:center;gap:12px;}
+  .mascot-svg{width:64px;height:64px;flex:none;}
+  .mascot-state{display:flex;flex-direction:column;gap:4px;}
+  .mascot-state .ms-label{font-size:12px;color:var(--textMuted);}
+  .core-pulse{transform-origin:center;animation:core-pulse 1.8s ease-in-out infinite;}
+
+  /* simulated-data note */
+  .sim-note{
+    width:100%;margin-top:4px;display:flex;align-items:center;gap:8px;
+    background:#FFFBEB;border:1px solid #FDE68A;color:var(--st-aguardando);
+    border-radius:var(--radius);padding:8px 14px;font-size:13px;
+  }
+  .sim-note svg{flex:none;}
+
+  /* ---------- Main grid ---------- */
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:24px;margin-top:24px;align-items:start;}
+  @media (max-width:980px){.grid{grid-template-columns:1fr;}}
+
+  /* ---------- Timeline ---------- */
+  .panel{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow-raised);}
+  .panel-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;
+    align-items:center;justify-content:space-between;gap:12px;}
+  .panel-head h2{font-size:18px;}
+  .panel-head .sub{font-size:13px;color:var(--textMuted);}
+  .timeline{padding:8px 20px 16px;}
+
+  .block{position:relative;padding:16px 0 16px 44px;border-bottom:1px solid var(--border);}
+  .block:last-child{border-bottom:none;}
+  /* vertical rail */
+  .block::before{content:"";position:absolute;left:15px;top:0;bottom:0;width:2px;background:var(--border-strong);}
+  .block:first-child::before{top:28px;}
+  .block:last-child::before{bottom:calc(100% - 28px);}
+  /* node marker */
+  .node{position:absolute;left:6px;top:20px;width:20px;height:20px;border-radius:50%;
+    background:var(--bg);border:2px solid var(--border-strong);z-index:1;display:flex;
+    align-items:center;justify-content:center;}
+  .node.done{border-color:var(--st-concluido);background:var(--st-concluido);}
+  .node.ativo{border-color:var(--st-ativo);background:var(--st-ativo);
+    box-shadow:0 0 0 4px rgba(8,145,178,.18);animation:node-run 1.6s ease-in-out infinite;}
+  .node.ocioso{border-color:var(--border-strong);background:var(--bg);}
+  .node.erro{border-color:var(--st-erro);background:var(--st-erro);}
+  .node svg{width:12px;height:12px;}
+
+  .block-row{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .block-icon{width:34px;height:34px;border-radius:var(--radius-sm);flex:none;display:flex;
+    align-items:center;justify-content:center;background:var(--surface);
+    border:1px solid var(--border);}
+  .block-icon.energy{background:#ECFEFF;border-color:#A5F3FC;}
+  .block-icon svg{width:18px;height:18px;}
+  .block-titles{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .block-type{font-size:12px;color:var(--textMuted);text-transform:uppercase;letter-spacing:.04em;}
+  .block-name{font-size:16px;font-weight:500;}
+  .block-grow{flex:1 1 auto;}
+
+  /* State badge (pill) */
+  .badge{display:inline-flex;align-items:center;gap:6px;border-radius:var(--pill);
+    color:#fff;font-size:12px;font-weight:500;padding:4px 12px;white-space:nowrap;}
+  .badge.concluido{background:var(--st-concluido);}
+  .badge.ativo{background:var(--st-ativo);}
+  .badge.ocioso{background:var(--st-ocioso);}
+  .badge.erro{background:var(--st-erro);}
+  .badge.aguardando{background:var(--st-aguardando);}
+  .badge .run-dot{width:7px;height:7px;border-radius:50%;background:#fff;
+    animation:pulse-dot 1.2s infinite;}
+  .badge svg{width:13px;height:13px;}
+
+  .retry-pill{display:inline-flex;align-items:center;gap:6px;border-radius:var(--pill);
+    background:#FFFBEB;border:1px solid #FDE68A;color:var(--st-aguardando);
+    font-size:12px;font-weight:500;padding:3px 10px;margin-left:8px;}
+  .retry-pill .mono{font-size:11px;}
+  .resolved{display:inline-flex;align-items:center;gap:6px;color:var(--st-concluido);
+    font-size:12px;margin-left:8px;}
+
+  /* expandable I/O preview */
+  details.io{margin-top:12px;width:100%;}
+  details.io>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;
+    gap:6px;font-size:13px;color:var(--cyanText);font-weight:500;user-select:none;}
+  details.io>summary::-webkit-details-marker{display:none;}
+  details.io>summary .chev{transition:transform .15s ease;}
+  details.io[open]>summary .chev{transform:rotate(90deg);}
+  .io-body{margin-top:10px;display:grid;grid-template-columns:1fr;gap:8px;}
+  .io-pair{display:grid;grid-template-columns:84px 1fr;gap:10px;align-items:start;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
+    padding:10px 12px;}
+  .io-key{font-size:12px;color:var(--textMuted);font-weight:500;padding-top:2px;}
+  .io-val{font-size:13px;color:var(--text);word-break:break-word;}
+  .io-val.mono{font-size:12.5px;line-height:1.55;}
+  .tag{display:inline-block;background:#ECFEFF;color:var(--cyanText);border:1px solid #A5F3FC;
+    border-radius:var(--radius-sm);padding:1px 7px;font-size:11.5px;font-weight:500;}
+  .tag.warn{background:#FFFBEB;color:var(--st-aguardando);border-color:#FDE68A;}
+
+  /* ---------- Side panel: WhatsApp reply ---------- */
+  .wa-panel .panel-head h2{font-size:16px;}
+  .wa-stage{padding:18px;background:#E5DDD5;border-radius:0 0 var(--radius) var(--radius);
+    background-image:radial-gradient(rgba(0,0,0,.03) 1px,transparent 1px);background-size:14px 14px;}
+  .wa-meta{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .wa-avatar{width:36px;height:36px;border-radius:50%;background:var(--graphite);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;flex:none;}
+  .wa-name{font-size:14px;font-weight:500;color:var(--text);}
+  .wa-num{font-size:12px;color:var(--textMuted);}
+  .bubble{max-width:88%;border-radius:10px;padding:9px 12px;font-size:14px;line-height:1.45;
+    box-shadow:0 1px 1px rgba(0,0,0,.12);position:relative;margin-bottom:10px;}
+  .bubble.in{background:#fff;color:#1E293B;border-top-left-radius:2px;align-self:flex-start;}
+  .bubble.out{background:#D9FDD3;color:#0F2A15;border-top-right-radius:2px;margin-left:auto;}
+  .bubble .time{display:block;text-align:right;font-size:10.5px;color:#64748B;margin-top:4px;}
+  .wa-flow{display:flex;flex-direction:column;}
+  .wa-foot{padding:12px 18px;border-top:1px solid var(--border);font-size:12px;
+    color:var(--textMuted);display:flex;align-items:center;gap:8px;}
+
+  /* progress summary */
+  .progress{padding:14px 20px;border-top:1px solid var(--border);display:flex;
+    align-items:center;gap:12px;font-size:13px;color:var(--textMuted);}
+  .progress .bar{flex:1 1 auto;height:8px;border-radius:var(--pill);background:var(--surface);
+    overflow:hidden;border:1px solid var(--border);}
+  .progress .bar i{display:block;height:100%;width:71%;background:var(--st-concluido);}
+
+  /* ---------- Controls / footer ---------- */
+  .controls{position:sticky;bottom:0;margin-top:24px;background:var(--bg);
+    border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-overlay);
+    padding:14px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .controls .left-note{font-size:13px;color:var(--st-concluido);display:flex;align-items:center;gap:8px;}
+  .controls .spacer{flex:1 1 auto;}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;
+    border-radius:var(--radius);padding:10px 18px;border:1px solid var(--border-strong);
+    background:var(--bg);color:var(--graphite);transition:background .12s ease,border-color .12s ease;}
+  .btn:hover{background:var(--surface);}
+  .btn svg{width:16px;height:16px;}
+  .btn-primary{background:var(--cyan);border-color:var(--cyan);color:#fff;}
+  .btn-primary:hover{background:#0891B2;border-color:#0891B2;}
+  .btn-primary svg{color:#fff;}
+
+  /* ---------- animations (reduced-motion safe) ---------- */
+  @keyframes pulse-dot{0%{box-shadow:0 0 0 0 rgba(6,182,212,.5);}70%{box-shadow:0 0 0 6px rgba(6,182,212,0);}100%{box-shadow:0 0 0 0 rgba(6,182,212,0);}}
+  @keyframes core-pulse{0%,100%{opacity:.55;transform:scale(.9);}50%{opacity:1;transform:scale(1.08);}}
+  @keyframes node-run{0%,100%{box-shadow:0 0 0 4px rgba(8,145,178,.18);}50%{box-shadow:0 0 0 7px rgba(8,145,178,.08);}}
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;}
+  }
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+</style>
+</head>
+<body>
+<main class="app" aria-labelledby="page-title">
+
+  <!-- ============ HEADER STRIP ============ -->
+  <header class="header">
+    <span class="test-badge" role="status" aria-label="Modo de Teste ativo">
+      <span class="dot" aria-hidden="true"></span> Modo de Teste
+    </span>
+
+    <div class="harness-meta">
+      <span class="label">Harness em execução</span>
+      <h1 id="page-title">Atendimento WhatsApp — Suporte a Pedidos</h1>
+      <span class="id mono">harness_id: hns_wa_atend_8f3c · execução #142</span>
+    </div>
+
+    <div class="header-spacer"></div>
+
+    <!-- MascotCore: Ativo (pulsing cyan-light core) -->
+    <div class="mascot">
+      <svg class="mascot-svg" viewBox="0 0 64 64" role="img" aria-label="Mascote RobbIA — estado Ativo">
+        <!-- robot-flowchart silhouette (no face) -->
+        <rect x="14" y="10" width="36" height="44" rx="8" fill="none" stroke="#334155" stroke-width="2"/>
+        <line x1="32" y1="4" x2="32" y2="10" stroke="#334155" stroke-width="2"/>
+        <circle cx="32" cy="3" r="2.5" fill="#06B6D4"/>
+        <line x1="8" y1="26" x2="14" y2="26" stroke="#475569" stroke-width="2"/>
+        <line x1="50" y1="26" x2="56" y2="26" stroke="#475569" stroke-width="2"/>
+        <!-- process lines (flow) -->
+        <line x1="22" y1="20" x2="42" y2="20" stroke="#475569" stroke-width="2"/>
+        <line x1="22" y1="44" x2="42" y2="44" stroke="#475569" stroke-width="2"/>
+        <!-- AI core diamond = living state indicator -->
+        <g class="core-pulse">
+          <rect x="24" y="24" width="16" height="16" rx="3" transform="rotate(45 32 32)" fill="#22D3EE"/>
+        </g>
+        <rect x="24" y="24" width="16" height="16" rx="3" transform="rotate(45 32 32)" fill="none" stroke="#06B6D4" stroke-width="1.5"/>
+      </svg>
+      <div class="mascot-state">
+        <span class="ms-label">Núcleo de IA</span>
+        <span class="badge ativo" role="status" aria-label="Estado do agente: Ativo">
+          <span class="run-dot" aria-hidden="true"></span> Ativo
+        </span>
+      </div>
+    </div>
+
+    <div class="sim-note" role="note">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+      <strong style="font-weight:500;">Dados simulados</strong> — nenhuma Ação Irreversível real será disparada. Envios e gravações são apenas pré-visualizações.
+    </div>
+  </header>
+
+  <!-- ============ MAIN GRID ============ -->
+  <div class="grid">
+
+    <!-- ---- Timeline of 7 blocks ---- -->
+    <section class="panel" aria-label="Linha do tempo da execução dos Blocos">
+      <div class="panel-head">
+        <h2>Execução bloco a bloco</h2>
+        <span class="sub mono" aria-hidden="true">7 blocos · ao vivo</span>
+      </div>
+
+      <div class="timeline">
+
+        <!-- 1 · Gatilho — Concluído -->
+        <article class="block">
+          <span class="node done" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+          </span>
+          <div class="block-row">
+            <span class="block-icon energy" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </span>
+            <div class="block-titles">
+              <span class="block-type">Gatilho</span>
+              <span class="block-name">Nova mensagem recebida</span>
+            </div>
+            <span class="block-grow"></span>
+            <span class="badge concluido"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Concluído</span>
+          </div>
+          <details class="io" open>
+            <summary><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg> entrada → saída</summary>
+            <div class="io-body">
+              <div class="io-pair"><span class="io-key">entrada</span><span class="io-val mono">{ canal: "whatsapp", de: "+55 47 9•••• ••21" }</span></div>
+              <div class="io-pair"><span class="io-key">saída</span><span class="io-val mono">msg: "Meu pedido não chegou!" <span class="tag warn">simulada</span></span></div>
+            </div>
+          </details>
+        </article>
+
+        <!-- 2 · Contexto — Concluído -->
+        <article class="block">
+          <span class="node done" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+          </span>
+          <div class="block-row">
+            <span class="block-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+            </span>
+            <div class="block-titles">
+              <span class="block-type">Contexto</span>
+              <span class="block-name">Recuperar histórico do cliente</span>
+            </div>
+            <span class="block-grow"></span>
+            <span class="badge concluido"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Concluído</span>
+          </div>
+          <details class="io">
+            <summary><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg> entrada → saída</summary>
+            <div class="io-body">
+              <div class="io-pair"><span class="io-key">entrada</span><span class="io-val mono">cliente: "Ana Beatriz S." · pedido: #PD-20418</span></div>
+              <div class="io-pair"><span class="io-key">saída</span><span class="io-val mono">histórico recuperado: 3 pedidos · último status "em transporte" há 6 dias · SLA estourado <span class="tag">12 mensagens anteriores</span></span></div>
+            </div>
+          </details>
+        </article>
+
+        <!-- 3 · Decisão — Concluído -->
+        <article class="block">
+          <span class="node done" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+          </span>
+          <div class="block-row">
+            <span class="block-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            </span>
+            <div class="block-titles">
+              <span class="block-type">Decisão</span>
+              <span class="block-name">Classificar intenção</span>
+            </div>
+            <span class="block-grow"></span>
+            <span class="badge concluido"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Concluído</span>
+          </div>
+          <details class="io">
+            <summary><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg> entrada → saída</summary>
+            <div class="io-body">
+              <div class="io-pair"><span class="io-key">entrada</span><span class="io-val mono">msg + histórico</span></div>
+              <div class="io-pair"><span class="io-key">saída</span><span class="io-val mono">intenção = <span class="tag">reclamação</span> · confiança 0.93 · sub-tema "atraso de entrega"</span></div>
+            </div>
+          </details>
+        </article>
+
+        <!-- 4 · Resposta — ATIVO (current) with retry then resolved -->
+        <article class="block">
+          <span class="node ativo" aria-hidden="true"></span>
+          <div class="block-row">
+            <span class="block-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </span>
+            <div class="block-titles">
+              <span class="block-type">Resposta</span>
+              <span class="block-name">Gerar resposta ao cliente</span>
+            </div>
+            <span class="block-grow"></span>
+            <span class="retry-pill" role="status" aria-label="Repetição automática: tentativa 2 de 3">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              tentativa <span class="mono">2/3</span>
+            </span>
+            <span class="resolved" aria-label="Repetição resolvida com sucesso">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              ok
+            </span>
+            <span class="badge ativo" role="status" aria-label="Estado do bloco: Ativo, executando">
+              <span class="run-dot" aria-hidden="true"></span> Ativo
+            </span>
+          </div>
+          <details class="io" open>
+            <summary><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg> entrada → saída</summary>
+            <div class="io-body">
+              <div class="io-pair"><span class="io-key">entrada</span><span class="io-val mono">intenção=reclamação · pedido #PD-20418 · tom "empático e resolutivo"</span></div>
+              <div class="io-pair"><span class="io-key">tentativa 1</span><span class="io-val mono"><span class="tag warn">tempo esgotado do modelo</span> — re-tentando conforme política (máx. 3)</span></div>
+              <div class="io-pair"><span class="io-key">saída</span><span class="io-val">Oi, Ana! Sinto muito pelo atraso do seu pedido #PD-20418. Já localizei aqui que ele passou do prazo combinado e vou priorizar a solução agora mesmo. Você prefere o reenvio com entrega expressa ou o reembolso integral?</span></div>
+            </div>
+          </details>
+        </article>
+
+        <!-- 5 · Decisão (escala) — Ocioso -->
+        <article class="block">
+          <span class="node ocioso" aria-hidden="true"></span>
+          <div class="block-row">
+            <span class="block-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            </span>
+            <div class="block-titles">
+              <span class="block-type">Decisão</span>
+              <span class="block-name">Avaliar necessidade de escalar</span>
+            </div>
+            <span class="block-grow"></span>
+            <span class="badge ocioso" aria-label="Estado do bloco: Ocioso, aguardando execução">Ocioso</span>
+          </div>
+          <details class="io">
+            <summary><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg> entrada → saída (prevista)</summary>
+            <div class="io-body">
+              <div class="io-pair"><span class="io-key">entrada</span><span class="io-val mono">intenção · gravidade · SLA</span></div>
+              <div class="io-pair"><span class="io-key">saída</span><span class="io-val mono">escala = <span class="tag">sim</span> · motivo: caso classificado como "grave" (SLA estourado + reclamação)</span></div>
+            </div>
+          </details>
+        </article>
+
+        <!-- 6 · Ação enviar — Ocioso -->
+        <article class="block">
+          <span class="node ocioso" aria-hidden="true"></span>
+          <div class="block-row">
+            <span class="block-icon energy" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="2"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
+            </span>
+            <div class="block-titles">
+              <span class="block-type">Ação</span>
+              <span class="block-name">Enviar resposta no WhatsApp</span>
+            </div>
+            <span class="block-grow"></span>
+            <span class="badge ocioso" aria-label="Estado do bloco: Ocioso, aguardando execução">Ocioso</span>
+          </div>
+          <details class="io">
+            <summary><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg> entrada → saída (prevista)</summary>
+            <div class="io-body">
+              <div class="io-pair"><span class="io-key">entrada</span><span class="io-val mono">para: "+55 47 9•••• ••21" · corpo: resposta gerada</span></div>
+              <div class="io-pair"><span class="io-key">saída</span><span class="io-val mono"><span class="tag warn">envio simulado</span> — mensagem não será entregue ao cliente real</span></div>
+            </div>
+          </details>
+        </article>
+
+        <!-- 7 · Ação registrar — Ocioso -->
+        <article class="block">
+          <span class="node ocioso" aria-hidden="true"></span>
+          <div class="block-row">
+            <span class="block-icon energy" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="2"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
+            </span>
+            <div class="block-titles">
+              <span class="block-type">Ação</span>
+              <span class="block-name">Registrar atendimento no CRM</span>
+            </div>
+            <span class="block-grow"></span>
+            <span class="badge ocioso" aria-label="Estado do bloco: Ocioso, aguardando execução">Ocioso</span>
+          </div>
+          <details class="io">
+            <summary><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg> entrada → saída (prevista)</summary>
+            <div class="io-body">
+              <div class="io-pair"><span class="io-key">entrada</span><span class="io-val mono">ticket: { pedido:"#PD-20418", tema:"atraso", escalado:true }</span></div>
+              <div class="io-pair"><span class="io-key">saída</span><span class="io-val mono">CRM › ticket criado <span class="tag warn">gravação simulada</span> — nenhum registro persistido</span></div>
+            </div>
+          </details>
+        </article>
+
+      </div>
+
+      <!-- progress summary -->
+      <div class="progress" aria-label="Progresso da execução: 3 de 7 blocos concluídos">
+        <span>Progresso</span>
+        <span class="bar" aria-hidden="true"><i></i></span>
+        <span class="mono">3 / 7 concluídos · 1 ativo</span>
+      </div>
+    </section>
+
+    <!-- ---- Side panel: simulated WhatsApp reply ---- -->
+    <aside class="panel wa-panel" aria-label="Pré-visualização da resposta simulada no WhatsApp">
+      <div class="panel-head">
+        <h2>Prévia da resposta</h2>
+        <span class="badge aguardando" aria-label="Pré-visualização: envio simulado">simulado</span>
+      </div>
+      <div class="wa-stage">
+        <div class="wa-meta">
+          <span class="wa-avatar" aria-hidden="true">AB</span>
+          <div>
+            <div class="wa-name">Ana Beatriz S.</div>
+            <div class="wa-num mono">+55 47 9•••• ••21</div>
+          </div>
+        </div>
+        <div class="wa-flow">
+          <div class="bubble in">
+            Meu pedido não chegou!
+            <span class="time">14:02</span>
+          </div>
+          <div class="bubble out">
+            Oi, Ana! Sinto muito pelo atraso do seu pedido #PD-20418. Já localizei aqui que ele passou do prazo combinado e vou priorizar a solução agora mesmo. Você prefere o reenvio com entrega expressa ou o reembolso integral?
+            <span class="time">14:02 · prévia</span>
+          </div>
+        </div>
+      </div>
+      <div class="wa-foot">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Resposta gerada pelo Bloco "Gerar resposta" · não enviada
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ============ CONTROLS ============ -->
+  <div class="controls" role="group" aria-label="Controles do Modo de Teste">
+    <span class="left-note">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      Todos os 7 blocos aprovados — pronto para publicar
+    </span>
+    <span class="spacer"></span>
+    <button class="btn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+      Pausar
+    </button>
+    <button class="btn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+      Reiniciar teste
+    </button>
+    <button class="btn btn-primary" type="button" aria-label="Publicar harness — todos os blocos aprovados">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      Publicar
+    </button>
+  </div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "@robbia/rpa-desktop-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@robbia/shared": "workspace:*",
+    "zod": "^4.0.0"
+  }
+}

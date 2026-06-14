@@ -1,0 +1,26 @@
+{
+  "name": "robbia",
+  "version": "0.0.0",
+  "private": true,
+  "description": "RobbIA — bancada de trabalho open-source do Arquiteto de Agentes de IA (MVP).",
+  "license": "MIT",
+  "packageManager": "bun@1.3.11",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "test": "turbo test",
+    "lint": "biome ci .",
+    "format": "biome format --write .",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.0",
+    "@types/bun": "^1.3.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RobbIA — Operação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#F1F5F9; --text:#1E293B; --muted:#475569; --graphite:#334155;
+    --cyan:#06B6D4; --cyan-text:#0E7490;
+    --b-aguard:#B45309; --b-conc:#15803D; --b-erro:#B91C1C; --b-ativo:#0891B2; --b-ocioso:#64748B; --b-pensa:#0E7490;
+    --radius:8px; --pill:9999px; --ring:#0E7490;
+    --shadow:0 1px 2px rgba(15,23,42,.06), 0 2px 8px rgba(15,23,42,.05);
+    --border:#E2E8F0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-weight:400;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .mono{font-family:'JetBrains Mono',monospace}
+  a{color:var(--cyan-text);text-decoration:none}
+  a:hover{text-decoration:underline}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  :focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:6px}
+
+  .app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+
+  /* ---------- Left nav ---------- */
+  .nav{background:var(--surface);border-right:1px solid var(--border);padding:20px 14px;display:flex;flex-direction:column;gap:24px}
+  .wordmark{font-size:22px;font-weight:500;letter-spacing:-.5px;padding:6px 10px;color:var(--graphite)}
+  .wordmark .ia{color:var(--cyan-text)}
+  .nav-group{display:flex;flex-direction:column;gap:2px}
+  .nav-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);padding:0 10px 6px}
+  .nav-item{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:var(--radius);color:var(--graphite);font-weight:400;font-size:14px}
+  .nav-item:hover{background:#E2E8F0;text-decoration:none}
+  .nav-item.active{background:#E0F2FE;color:var(--cyan-text);font-weight:500}
+  .nav-item svg{flex:0 0 18px}
+  .nav-item.active svg{color:var(--cyan)}
+  .nav-foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--border)}
+  .avatar{width:30px;height:30px;border-radius:var(--pill);background:var(--cyan);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500}
+  .nav-foot .who{font-size:13px;line-height:1.2}
+  .nav-foot .who span{display:block;color:var(--muted);font-size:11px}
+
+  /* ---------- Main ---------- */
+  .main{display:flex;flex-direction:column;min-width:0}
+  .topbar{height:60px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:var(--bg);position:sticky;top:0;z-index:5}
+  .topbar h1{font-size:18px;font-weight:500}
+  .topbar .crumbs{color:var(--muted);font-size:12px;margin-top:1px}
+  .top-actions{display:flex;align-items:center;gap:14px}
+  .icon-btn{position:relative;width:38px;height:38px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;color:var(--graphite)}
+  .icon-btn:hover{background:var(--surface)}
+  .bell-badge{position:absolute;top:5px;right:5px;min-width:16px;height:16px;padding:0 3px;border-radius:var(--pill);background:var(--b-erro);color:#fff;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+  .live-chip{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);background:var(--surface);padding:6px 12px;border-radius:var(--pill)}
+  .live-dot{width:8px;height:8px;border-radius:var(--pill);background:var(--b-conc);box-shadow:0 0 0 3px rgba(21,128,61,.18);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  .content{padding:28px;display:flex;flex-direction:column;gap:28px;max-width:1280px;width:100%}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+  .section-head h2{font-size:15px;font-weight:500;color:var(--graphite)}
+  .section-head .hint{font-size:12px;color:var(--muted)}
+
+  /* ---------- KPI cards ---------- */
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .kpi{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+  .kpi .k-top{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:12px;font-weight:500}
+  .kpi .k-ico{width:30px;height:30px;border-radius:var(--radius);background:#E0F2FE;color:var(--cyan);display:flex;align-items:center;justify-content:center;flex:0 0 30px}
+  .kpi .k-val{font-size:28px;font-weight:500;margin-top:10px;letter-spacing:-.5px}
+  .kpi .k-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .k-sub .up{color:var(--b-conc);font-weight:500}
+  .k-sub .down{color:var(--b-erro);font-weight:500}
+
+  /* ---------- Running agents list ---------- */
+  .agents-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-top:18px}
+  .agent-row{display:flex;align-items:center;gap:14px;padding:13px 18px;border-top:1px solid var(--border)}
+  .agent-row:first-child{border-top:none}
+  .agent-row:hover{background:#F8FAFC}
+  .mascot{position:relative;width:34px;height:34px;border-radius:var(--pill);background:var(--surface);display:flex;align-items:center;justify-content:center;flex:0 0 34px;color:var(--graphite)}
+  .mascot .dot{position:absolute;bottom:-1px;right:-1px;width:11px;height:11px;border-radius:var(--pill);border:2px solid var(--bg)}
+  .dot.ativo{background:var(--b-ativo)}
+  .dot.ocioso{background:var(--b-ocioso)}
+  .dot.erro{background:var(--b-erro)}
+  .dot.pensa{background:var(--b-pensa)}
+  .agent-name{font-weight:500;font-size:14px}
+  .agent-meta{font-size:12px;color:var(--muted);margin-top:1px}
+  .agent-row .grow{flex:1;min-width:0}
+
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:var(--pill);color:#fff;font-size:11.5px;font-weight:500;line-height:1.4;white-space:nowrap}
+  .badge .bdot{width:6px;height:6px;border-radius:var(--pill);background:rgba(255,255,255,.85)}
+  .badge.aguard{background:var(--b-aguard)}
+  .badge.conc{background:var(--b-conc)}
+  .badge.erro{background:var(--b-erro)}
+  .badge.ativo{background:var(--b-ativo)}
+  .badge.ocioso{background:var(--b-ocioso)}
+  .badge.pensa{background:var(--b-pensa)}
+
+  /* ---------- Confirmation queue ---------- */
+  .confirm-panel{border:1px solid #FCD9A8;border-left:4px solid var(--b-aguard);background:#FFFBF5;border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px}
+  .confirm-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .confirm-head .ttl{font-size:15px;font-weight:500;color:var(--graphite)}
+  .confirm-head .irr{font-size:11px;font-weight:500;color:var(--b-aguard);border:1px solid #F3C892;background:#FEF3E2;padding:2px 9px;border-radius:var(--pill);display:inline-flex;align-items:center;gap:5px}
+  .confirm-sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+  .confirm-item{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:15px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .ci-icon{width:42px;height:42px;border-radius:var(--radius);background:#FEF3E2;color:var(--b-aguard);display:flex;align-items:center;justify-content:center;flex:0 0 42px}
+  .ci-body{flex:1;min-width:220px}
+  .ci-title{font-weight:500;font-size:15px}
+  .ci-amount{font-family:'JetBrains Mono',monospace;font-weight:500}
+  .ci-detail{font-size:12px;color:var(--muted);margin-top:3px}
+  .ci-detail .mono{color:var(--graphite)}
+  .countdown{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--b-aguard);font-weight:500;background:#FEF3E2;padding:5px 11px;border-radius:var(--pill);white-space:nowrap}
+  .ci-actions{display:flex;gap:10px;align-items:center}
+  .btn{padding:9px 18px;border-radius:var(--radius);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:7px}
+  .btn-primary{background:var(--cyan);color:#fff}
+  .btn-primary:hover{background:#0891B2}
+  .btn-ghost{background:var(--bg);color:var(--graphite);border:1px solid var(--border)}
+  .btn-ghost:hover{background:var(--surface)}
+  .safe-note{font-size:11px;color:var(--muted);margin-top:12px;display:flex;align-items:center;gap:7px}
+  .safe-note svg{flex:0 0 14px;color:var(--b-conc)}
+
+  /* ---------- Live log ---------- */
+  .log-card{border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;background:var(--bg)}
+  .log-bar{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
+  .log-bar .lt{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:500;color:var(--graphite)}
+  .log-bar .exec-id{font-size:11px;color:var(--muted)}
+  .log-stream{font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.65;padding:8px 0;max-height:430px;overflow-y:auto;background:#FCFDFE}
+  .log-line{display:grid;grid-template-columns:78px 96px 1fr;gap:12px;padding:5px 18px;border-bottom:1px solid #F1F5F9;align-items:start}
+  .log-line:hover{background:#F8FAFC}
+  .lg-time{color:var(--muted)}
+  .lg-tag{font-weight:500}
+  .lg-tag.ok{color:var(--b-conc)}
+  .lg-tag.retry{color:var(--b-aguard)}
+  .lg-tag.erro{color:var(--b-erro)}
+  .lg-tag.info{color:var(--graphite)}
+  .lg-tag.fail{color:var(--b-pensa)}
+  .lg-msg{color:var(--text);word-break:break-word}
+  .lg-msg .key{color:var(--cyan-text)}
+  .lg-msg .dim{color:var(--muted)}
+  .verdict{display:inline-flex;align-items:center;gap:6px;color:var(--b-conc);font-weight:500;background:#EAF7EE;border:1px solid #C2E7CC;padding:2px 9px;border-radius:var(--pill);font-size:11.5px;margin-top:6px}
+  .rpa-row{display:flex;gap:12px;align-items:flex-start;margin-top:7px}
+  .thumb{width:96px;height:60px;border-radius:6px;border:1px solid var(--border);background:linear-gradient(135deg,#E2E8F0 0 25%,#EEF2F7 25% 50%,#E2E8F0 50% 75%,#EEF2F7 75% 100%);background-size:14px 14px;position:relative;flex:0 0 96px;overflow:hidden;display:flex;align-items:flex-end}
+  .thumb .cap{font-family:'Inter',sans-serif;font-size:9px;color:var(--muted);background:rgba(255,255,255,.85);width:100%;padding:2px 5px;line-height:1.2}
+  .thumb .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--graphite);opacity:.55}
+  .caret{display:inline-block;width:7px;height:14px;background:var(--cyan-text);vertical-align:-2px;animation:blink 1s step-end infinite;margin-left:2px}
+  @keyframes blink{50%{opacity:0}}
+  .log-foot{padding:7px 18px;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===================== LEFT NAV ===================== -->
+  <nav class="nav" aria-label="Navegação principal">
+    <div class="wordmark">Robb<span class="ia">IA</span></div>
+
+    <div class="nav-group">
+      <div class="nav-label">Plataforma</div>
+      <a class="nav-item" href="#">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        Harnesses
+      </a>
+      <a class="nav-item" href="#">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/></svg>
+        Builder
+      </a>
+      <a class="nav-item active" href="#" aria-current="page">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12a9 9 0 1 1 18 0 9 9 0 0 1-18 0Z"/><path d="M12 7v5l3 2"/></svg>
+        Operação
+      </a>
+      <a class="nav-item" href="#">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M14 3v6h6"/></svg>
+        Workspace
+      </a>
+    </div>
+
+    <div class="nav-foot">
+      <div class="avatar" aria-hidden="true">MK</div>
+      <div class="who">Márcio Kroth<span>Operador</span></div>
+    </div>
+  </nav>
+
+  <!-- ===================== MAIN ===================== -->
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h1>Operação</h1>
+        <div class="crumbs">Painel de execução em tempo real</div>
+      </div>
+      <div class="top-actions">
+        <div class="live-chip"><span class="live-dot" aria-hidden="true"></span>Ao vivo</div>
+        <button class="icon-btn" aria-label="Notificações: 3 não lidas">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="bell-badge" aria-hidden="true">3</span>
+        </button>
+        <button class="icon-btn" aria-label="Configurações da operação">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ============ 1. VISÃO GERAL ============ -->
+      <section aria-labelledby="vg-title">
+        <div class="section-head">
+          <h2 id="vg-title">Visão geral</h2>
+          <span class="hint">Atualizado há 4 segundos</span>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="k-top">
+              <span class="k-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="18" cy="9" r="2.4"/><path d="M16 20a5 5 0 0 1 5-5"/></svg></span>
+              Agentes ativos
+            </div>
+            <div class="k-val">7</div>
+            <div class="k-sub">2 ociosos · 1 com erro</div>
+          </div>
+
+          <div class="kpi">
+            <div class="k-top">
+              <span class="k-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m13 2-9 11h7l-2 9 9-11h-7l2-9Z"/></svg></span>
+              Execuções hoje
+            </div>
+            <div class="k-val mono">1.284</div>
+            <div class="k-sub"><span class="up">▲ 12%</span> vs. ontem</div>
+          </div>
+
+          <div class="kpi">
+            <div class="k-top">
+              <span class="k-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="m9 11 3 3L22 4"/></svg></span>
+              Taxa sem erro
+            </div>
+            <div class="k-val">98,6<span style="font-size:18px">%</span></div>
+            <div class="k-sub"><span class="down">▼ 0,4%</span> nas últimas 24h</div>
+          </div>
+
+          <div class="kpi">
+            <div class="k-top">
+              <span class="k-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+              Confirmações pendentes
+            </div>
+            <div class="k-val">1</div>
+            <div class="k-sub">Requer ação humana</div>
+          </div>
+        </div>
+
+        <!-- Running agents -->
+        <div class="agents-card" aria-label="Agentes em execução">
+          <div class="agent-row">
+            <div class="mascot" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4"/><circle cx="9" cy="13" r="1.3" fill="currentColor"/><circle cx="15" cy="13" r="1.3" fill="currentColor"/></svg>
+              <span class="dot ativo"></span>
+            </div>
+            <div class="grow">
+              <div class="agent-name">Atendimento WhatsApp</div>
+              <div class="agent-meta mono">harness/wpp-suporte · 142 execuções hoje</div>
+            </div>
+            <span class="badge ativo"><span class="bdot"></span>Ativo</span>
+          </div>
+
+          <div class="agent-row">
+            <div class="mascot" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4"/><circle cx="9" cy="13" r="1.3" fill="currentColor"/><circle cx="15" cy="13" r="1.3" fill="currentColor"/></svg>
+              <span class="dot pensa"></span>
+            </div>
+            <div class="grow">
+              <div class="agent-name">Conciliador Financeiro</div>
+              <div class="agent-meta mono">harness/erp-conciliacao · processando lote #4821</div>
+            </div>
+            <span class="badge pensa"><span class="bdot"></span>Pensando</span>
+          </div>
+
+          <div class="agent-row">
+            <div class="mascot" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4"/><circle cx="9" cy="13" r="1.3" fill="currentColor"/><circle cx="15" cy="13" r="1.3" fill="currentColor"/></svg>
+              <span class="dot ocioso"></span>
+            </div>
+            <div class="grow">
+              <div class="agent-name">Triagem de E-mails</div>
+              <div class="agent-meta mono">harness/email-triagem · aguardando gatilho</div>
+            </div>
+            <span class="badge ocioso"><span class="bdot"></span>Ocioso</span>
+          </div>
+
+          <div class="agent-row">
+            <div class="mascot" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4"/><circle cx="9" cy="13" r="1.3" fill="currentColor"/><circle cx="15" cy="13" r="1.3" fill="currentColor"/></svg>
+              <span class="dot erro"></span>
+            </div>
+            <div class="grow">
+              <div class="agent-name">Robô de Nota Fiscal (RPA)</div>
+              <div class="agent-meta mono">harness/rpa-nfe · timeout no portal SEFAZ</div>
+            </div>
+            <span class="badge erro"><span class="bdot"></span>Erro</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 2. FILA DE CONFIRMAÇÕES ============ -->
+      <section aria-labelledby="fc-title">
+        <div class="confirm-panel">
+          <div class="confirm-head">
+            <span class="ttl" id="fc-title">Fila de confirmações</span>
+            <span class="irr">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+              Ação irreversível
+            </span>
+          </div>
+          <p class="confirm-sub">Esta ação altera sistemas externos e não pode ser desfeita pelo RobbIA. Por segurança, nada é executado sem confirmação humana explícita.</p>
+
+          <div class="confirm-item">
+            <div class="ci-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>
+            </div>
+            <div class="ci-body">
+              <div class="ci-title">Lançamento financeiro — <span class="ci-amount">R$ 4.820,00</span> no ERP</div>
+              <div class="ci-detail">Fornecedor <span class="mono">Distribuidora Aurora LTDA</span> · NF <span class="mono">128.430</span> · conta <span class="mono">2.1.01 — Fornecedores</span></div>
+              <div class="ci-detail">Solicitado por <span class="mono">Conciliador Financeiro</span> · exec <span class="mono">#a7f2-9c01</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end">
+              <span class="countdown" role="timer" aria-label="Expira em 23 horas e 41 minutos">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 1.5"/></svg>
+                expira em 23h 41min
+              </span>
+              <div class="ci-actions">
+                <button class="btn btn-ghost" aria-label="Rejeitar lançamento financeiro de R$ 4.820,00">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  Rejeitar
+                </button>
+                <button class="btn btn-primary" aria-label="Confirmar lançamento financeiro de R$ 4.820,00 no ERP">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="safe-note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+            Padrão seguro: ao expirar sem resposta, o lançamento <strong>não é executado</strong>.
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 3. LOG AO VIVO ============ -->
+      <section aria-labelledby="log-title">
+        <div class="section-head">
+          <h2 id="log-title">Log ao vivo</h2>
+          <span class="hint">Atendimento WhatsApp · stream contínuo</span>
+        </div>
+
+        <div class="log-card">
+          <div class="log-bar">
+            <div class="lt"><span class="live-dot" aria-hidden="true"></span>Execução em andamento</div>
+            <div class="exec-id mono">exec #b9e4-2210 · harness/wpp-suporte</div>
+          </div>
+
+          <div class="log-stream mono" role="log" aria-live="polite" aria-label="Log de execução ao vivo">
+
+            <div class="log-line">
+              <span class="lg-time">10:42:07</span>
+              <span class="lg-tag info">GATILHO</span>
+              <span class="lg-msg">Gatilho recebido <span class="dim">(WhatsApp)</span> — de <span class="key">+55&nbsp;47&nbsp;9&nbsp;9912-4408</span> · msg <span class="dim">"meu pedido 88231 já saiu?"</span></span>
+            </div>
+
+            <div class="log-line">
+              <span class="lg-time">10:42:07</span>
+              <span class="lg-tag ok">OK</span>
+              <span class="lg-msg">Contexto recuperado — <span class="key">cliente=Joana&nbsp;P.</span> · <span class="key">pedidos=3</span> · janela=últimos&nbsp;30d <span class="dim">(214ms)</span></span>
+            </div>
+
+            <div class="log-line">
+              <span class="lg-time">10:42:08</span>
+              <span class="lg-tag fail">FALLBACK</span>
+              <span class="lg-msg">Provider <span class="key">Claude</span> indisponível <span class="dim">(503 · timeout 4s)</span> → fallback <span class="key">OpenRouter</span> ativado</span>
+            </div>
+
+            <div class="log-line">
+              <span class="lg-time">10:42:09</span>
+              <span class="lg-tag retry">RETRY</span>
+              <span class="lg-msg">Reenviando inferência via OpenRouter <span class="dim">(tentativa 2/3)</span> — modelo <span class="key">anthropic/claude-via-or</span></span>
+            </div>
+
+            <div class="log-line">
+              <span class="lg-time">10:42:10</span>
+              <span class="lg-tag ok">OK</span>
+              <span class="lg-msg">Decisão: <span class="key">intenção=dúvida</span> · <span class="key">tópico=status_entrega</span> · confiança <span class="key">0.94</span></span>
+            </div>
+
+            <div class="log-line">
+              <span class="lg-time">10:42:10</span>
+              <span class="lg-tag info">RPA</span>
+              <span class="lg-msg">Verificação no portal da transportadora — pedido <span class="key">#88231</span>
+                <div class="rpa-row">
+                  <div class="thumb" role="img" aria-label="Captura de tela da verificação no portal da transportadora">
+                    <span class="play" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 13h6"/></svg></span>
+                    <span class="cap">screenshot_88231.png</span>
+                  </div>
+                  <div>
+                    <div class="dim">verdict estruturado:</div>
+                    <span class="verdict"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>✓ pedido lançado</span>
+                    <div class="dim" style="margin-top:5px">status=<span class="key" style="color:var(--cyan-text)">em_transito</span> · rastreio=<span class="key" style="color:var(--cyan-text)">BR884512210SP</span> · previsão=16/06</div>
+                  </div>
+                </div>
+              </span>
+            </div>
+
+            <div class="log-line">
+              <span class="lg-time">10:42:11</span>
+              <span class="lg-tag ok">OK</span>
+              <span class="lg-msg">Resposta gerada — <span class="dim">"Oi Joana! Seu pedido 88231 já saiu e está em trânsito 🚚. Previsão: 16/06. Rastreio: BR884512210SP."</span></span>
+            </div>
+
+            <div class="log-line">
+              <span class="lg-time">10:42:11</span>
+              <span class="lg-tag ok">OK</span>
+              <span class="lg-msg">Ação: enviada <span class="dim">(WhatsApp · message_id <span class="key">wamid.HBg…X2A1</span>)</span> · entregue ✓<span class="caret" aria-hidden="true"></span></span>
+            </div>
+
+          </div>
+
+          <div class="log-foot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+            Append-only · novos blocos surgem no fim · 8 entradas nesta execução
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+</body>
+</html>

@@ -1,0 +1,12 @@
+# Override do nó Windows (RPA desktop nativo). Placeholder da Story 1.1.
+# O worker .NET/FlaUI e o ambiente Windows isolado são definidos na Story 5.3.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.windows.yml --profile windows up
+services:
+  rpa-desktop-worker:
+    profiles: ['windows']
+    image: robbia/rpa-desktop-worker:dev
+    environment:
+      DATABASE_URL: postgres://robbia:robbia@postgres:5432/robbia
+    depends_on:
+      postgres:
+        condition: service_healthy

@@ -1,0 +1,26 @@
+name: "💡 Feature request"
+description: "Suggest an idea or improvement · Sugira uma ideia ou melhoria"
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem / motivation · Problema / motivação"
+      description: "What need does this address? · Que necessidade isto resolve?"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Proposed solution · Solução proposta"
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives considered · Alternativas consideradas"
+  - type: textarea
+    id: context
+    attributes:
+      label: "Additional context · Contexto adicional"
+      description: "How does it relate to the PRD / roadmap? · Como se relaciona ao PRD / roadmap?"

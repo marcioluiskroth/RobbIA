@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RobbIA — Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#F1F5F9; --text:#1E293B; --muted:#475569; --structure:#334155;
+    --cyan:#06B6D4; --cyanText:#0E7490;
+    --steel:#64748B; --slate:#475569;
+    --waiting:#B45309; --done:#15803D; --error:#B91C1C; --thinking:#0E7490; --active:#0891B2; --idle:#64748B;
+    --shadow:0 1px 3px rgba(15,23,42,.10), 0 1px 2px rgba(15,23,42,.06);
+    --focus:#0E7490;
+    --r:8px; --pill:9999px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Inter',system-ui,sans-serif; font-weight:400;
+    background:var(--surface); color:var(--text); font-size:14px; line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+  button{font-family:inherit;cursor:pointer;}
+  :focus-visible{outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--r);}
+
+  /* ===== Top bar ===== */
+  .topbar{
+    height:56px; background:var(--bg); border-bottom:1px solid #E2E8F0;
+    display:flex; align-items:center; gap:24px; padding:0 20px;
+    position:sticky; top:0; z-index:10;
+  }
+  .wordmark{font-weight:500; font-size:18px; letter-spacing:-.2px; color:var(--structure); display:flex; align-items:center; gap:8px;}
+  .wordmark .ia{color:var(--cyanText);}
+  .mark-diamond{width:22px;height:22px;display:inline-block;}
+  .ws{display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px;}
+  .ws .chip{background:var(--surface); border:1px solid #E2E8F0; padding:4px 10px; border-radius:var(--r); color:var(--text);}
+  .topbar-right{margin-left:auto; display:flex; align-items:center; gap:14px;}
+
+  .theme-toggle{
+    display:flex; align-items:center; gap:6px; background:var(--surface); border:1px solid #E2E8F0;
+    border-radius:var(--pill); padding:3px;
+  }
+  .theme-toggle button{
+    border:none; background:transparent; border-radius:var(--pill); padding:5px 11px; font-size:12px; color:var(--muted);
+    display:flex; align-items:center; gap:5px;
+  }
+  .theme-toggle button.active{background:var(--bg); color:var(--text); box-shadow:var(--shadow);}
+
+  /* MascotCore indicator in top bar */
+  .mascot{display:flex; align-items:center; gap:9px; background:var(--surface); border:1px solid #E2E8F0; border-radius:var(--pill); padding:5px 12px 5px 8px;}
+  .mascot .core-wrap{position:relative; width:24px; height:24px; display:flex; align-items:center; justify-content:center;}
+  .mascot .core-label{font-size:12px; color:var(--cyanText); font-weight:500;}
+  @keyframes pulse{0%{transform:scale(.7);opacity:.85;}70%{transform:scale(1.9);opacity:0;}100%{opacity:0;}}
+  .pulse-ring{position:absolute; width:10px;height:10px;border-radius:50%;background:var(--cyan);animation:pulse 1.8s ease-out infinite;}
+  .core-dot{position:absolute; width:8px;height:8px;border-radius:50%;background:var(--cyan);}
+  @media (prefers-reduced-motion:reduce){.pulse-ring{animation:none;opacity:.25;}}
+
+  /* ===== 3-zone layout ===== */
+  .builder{
+    display:grid;
+    grid-template-columns:28% 40% 32%;
+    gap:14px; padding:14px; align-items:start;
+    height:calc(100vh - 56px);
+  }
+  .zone{
+    background:var(--bg); border:1px solid #E2E8F0; border-radius:12px;
+    height:100%; display:flex; flex-direction:column; overflow:hidden; box-shadow:var(--shadow);
+  }
+  .zone-head{
+    padding:14px 16px; border-bottom:1px solid #E8EEF4; display:flex; align-items:center; gap:8px;
+    flex:0 0 auto;
+  }
+  .zone-head h2{margin:0; font-size:13px; font-weight:500; letter-spacing:.3px; text-transform:uppercase; color:var(--muted);}
+  .zone-head .icon{color:var(--cyan); display:flex;}
+  .zone-body{flex:1 1 auto; overflow-y:auto; padding:16px;}
+
+  /* ===== LEFT — chat ===== */
+  .chat{display:flex; flex-direction:column; gap:14px;}
+  .msg{display:flex; gap:10px; max-width:100%;}
+  .avatar{width:28px;height:28px;border-radius:8px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:500;}
+  .avatar.user{background:var(--structure);}
+  .avatar.ia{background:var(--cyan);}
+  .bubble{border-radius:var(--r); padding:10px 12px; font-size:13.5px;}
+  .msg.user{flex-direction:row-reverse;}
+  .msg.user .bubble{background:var(--structure); color:#fff;}
+  .msg.ia .bubble{background:var(--surface); color:var(--text);}
+  .bubble .who{font-size:11px; color:var(--muted); margin-bottom:4px; font-weight:500;}
+  .msg.user .bubble .who{color:#CBD5E1;}
+  .bubble ul{margin:8px 0 2px; padding-left:18px;}
+  .bubble li{margin:3px 0;}
+  .bubble .summary-head{font-weight:500; margin-bottom:2px;}
+  .block-inline{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--cyanText);}
+
+  .composer{flex:0 0 auto; border-top:1px solid #E8EEF4; padding:12px;}
+  .composer .box{display:flex; align-items:flex-end; gap:8px; border:1px solid #CBD5E1; border-radius:var(--r); padding:8px 8px 8px 12px; background:var(--bg);}
+  .composer textarea{flex:1; border:none; resize:none; font-family:inherit; font-size:13.5px; color:var(--text); height:40px; outline:none; background:transparent;}
+  .composer textarea::placeholder{color:#94A3B8;}
+  .send-btn{
+    background:var(--cyan); color:#fff; border:none; border-radius:var(--r); width:38px;height:38px;
+    display:flex;align-items:center;justify-content:center; flex:0 0 auto;
+  }
+
+  /* ===== CENTER — block cards ===== */
+  .cards{display:flex; flex-direction:column; gap:12px;}
+  .card{
+    border:1px solid #E2E8F0; border-left:4px solid var(--slate); border-radius:var(--r);
+    background:var(--bg); box-shadow:var(--shadow); padding:14px;
+  }
+  .card.active{box-shadow:0 4px 14px rgba(15,23,42,.12); border-color:#CBD5E1; border-left-width:4px;}
+  .card-top{display:flex; align-items:center; gap:10px;}
+  .blk-icon{width:30px;height:30px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .blk-meta{flex:1; min-width:0;}
+  .blk-type{font-weight:500; font-size:14px; color:var(--text);}
+  .blk-sub{font-size:12px; color:var(--muted);}
+  .badge{
+    display:inline-flex; align-items:center; gap:5px; border-radius:var(--pill); padding:3px 9px;
+    font-size:11px; font-weight:500; color:#fff; white-space:nowrap;
+  }
+  .badge.waiting{background:var(--waiting);} .badge.done{background:var(--done);}
+  .badge.error{background:var(--error);} .badge.thinking{background:var(--thinking);}
+  .badge.active{background:var(--active);} .badge.idle{background:var(--idle);}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9;}
+  .model-badge{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; background:var(--surface); color:var(--structure);
+    border:1px solid #E2E8F0; border-radius:var(--r); padding:2px 8px; display:inline-flex; align-items:center; gap:5px;
+  }
+  .model-badge.nollm{color:var(--muted);}
+  .justify{font-size:13px; color:var(--muted); margin:10px 0 12px; line-height:1.5;}
+  .actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .btn{
+    border-radius:var(--r); padding:6px 12px; font-size:12.5px; font-weight:500; border:1px solid #CBD5E1;
+    background:var(--bg); color:var(--text); display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn.primary{background:var(--cyan); border-color:var(--cyan); color:#fff;}
+  .btn.ghost{background:transparent; border-color:transparent; color:var(--cyanText);}
+  .btn svg{display:block;}
+  .card-collapsed .justify{display:none;}
+  .card-collapsed .actions{display:none;}
+
+  /* ===== RIGHT — flow ===== */
+  .flow{display:flex; flex-direction:column; align-items:center; gap:0; padding:6px 0 0;}
+  .node{
+    position:relative; width:200px; min-height:46px; display:flex; align-items:center; gap:10px;
+    padding:9px 14px; background:var(--bg); border:1.5px solid var(--slate); color:var(--text); font-size:13px;
+    box-shadow:var(--shadow);
+  }
+  .node .n-state{position:absolute; right:9px; top:9px; width:8px;height:8px;border-radius:50%;border:1.5px solid var(--bg);}
+  .node .n-icon{display:flex; color:var(--slate); flex:0 0 auto;}
+  .node .n-label{font-weight:500;}
+  .node.stadium{border-radius:var(--pill); border-color:var(--cyan);}
+  .node.stadium .n-icon{color:var(--cyan);}
+  .node.rrect{border-radius:10px;}
+  .node.diamond{
+    width:150px; height:90px; transform:rotate(45deg); border-color:var(--structure);
+    justify-content:center; padding:0;
+  }
+  .node.diamond .inner{transform:rotate(-45deg); display:flex; flex-direction:column; align-items:center; gap:3px; text-align:center;}
+  .node.diamond .n-icon{color:var(--structure);}
+  .node.diamond .n-state{transform:rotate(-45deg); right:auto; top:auto; position:static;}
+  .node.diamond .n-sub{font-size:10px; color:var(--muted);}
+  .connector{width:2px; height:20px; background:var(--slate);}
+  .connector.short{height:14px;}
+  .n-sub{font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace;}
+
+  /* state panel */
+  .state-panel{border-top:1px solid #E8EEF4; padding:16px; flex:0 0 auto; background:var(--bg);}
+  .state-panel h3{margin:0 0 12px; font-size:13px; font-weight:500; text-transform:uppercase; letter-spacing:.3px; color:var(--muted);}
+  .state-row{display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:13px;}
+  .state-row .k{color:var(--muted);}
+  .state-row .v{font-weight:500;}
+  .run-btn{
+    width:100%; margin-top:14px; background:var(--cyan); color:#fff; border:none; border-radius:var(--r);
+    padding:11px; font-size:14px; font-weight:500; display:flex; align-items:center; justify-content:center; gap:8px;
+    box-shadow:var(--shadow);
+  }
+
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:14px; font-size:11px; color:var(--muted);}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .legend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar">
+  <div class="wordmark">
+    <svg class="mark-diamond" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="12" y="2" width="14.14" height="14.14" rx="2" transform="rotate(45 12 2)" stroke="#334155" stroke-width="1.6"/>
+      <circle cx="12" cy="12" r="3" fill="#06B6D4"/>
+    </svg>
+    <span>Robb<span class="ia">IA</span></span>
+  </div>
+
+  <div class="ws">
+    <span>Workspace</span>
+    <span class="chip mono">atendimento-comercial</span>
+  </div>
+
+  <div class="topbar-right">
+    <!-- MascotCore state indicator -->
+    <div class="mascot" role="status" aria-label="Mascote IA: estado Pensando">
+      <span class="core-wrap" aria-hidden="true">
+        <span class="pulse-ring"></span>
+        <span class="core-dot"></span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <rect x="12" y="2.5" width="13.4" height="13.4" rx="2" transform="rotate(45 12 2.5)" stroke="#334155" stroke-width="1.3"/>
+        </svg>
+      </span>
+      <span class="core-label">Pensando</span>
+    </div>
+
+    <div class="theme-toggle" role="group" aria-label="Alternar tema">
+      <button class="active" aria-pressed="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        Claro
+      </button>
+      <button aria-pressed="false" aria-label="Tema escuro">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        Escuro
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ============ BUILDER ============ -->
+<main class="builder">
+
+  <!-- ===== LEFT — CONVERSA ===== -->
+  <section class="zone" aria-label="Conversa com a IA Arquiteta">
+    <div class="zone-head">
+      <span class="icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </span>
+      <h2>Conversa · IA Arquiteta</h2>
+    </div>
+
+    <div class="zone-body chat">
+      <div class="msg user">
+        <div class="avatar user" aria-hidden="true">EU</div>
+        <div class="bubble">
+          <div class="who">Você</div>
+          agente que recebe mensagens no WhatsApp, busca histórico, responde dúvidas e me avisa se for reclamação grave
+        </div>
+      </div>
+
+      <div class="msg ia">
+        <div class="avatar ia" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="12" y="3" width="12.7" height="12.7" rx="1.6" transform="rotate(45 12 3)" stroke="#fff" stroke-width="1.4"/><circle cx="12" cy="12" r="2.4" fill="#fff"/></svg>
+        </div>
+        <div class="bubble">
+          <div class="who">IA Arquiteta</div>
+          Entendi. Projetei um harness de <strong>7 Blocos</strong> para atendimento no WhatsApp — recepção, contexto, duas decisões e os disparos finais:
+          <ul>
+            <li><span class="block-inline">Gatilho</span> — recebe a mensagem via Evolution API.</li>
+            <li><span class="block-inline">Contexto</span> — busca o histórico do contato.</li>
+            <li><span class="block-inline">Decisão</span> — classifica a intenção da mensagem.</li>
+            <li><span class="block-inline">Resposta</span> — redige a resposta à dúvida.</li>
+            <li><span class="block-inline">Decisão</span> — detecta reclamação grave (escalonar?).</li>
+            <li><span class="block-inline">Ação</span> — envia a resposta ao cliente.</li>
+            <li><span class="block-inline">Ação</span> — registra e te avisa se for grave.</li>
+          </ul>
+          <div style="margin-top:8px;">Revise os cards ao lado: aprove, troque o modelo ou peça para eu repensar qualquer Bloco.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="box">
+        <textarea aria-label="Descreva ou refine o agente" placeholder="Refine o agente… ex.: também enviar pesquisa de satisfação ao final"></textarea>
+        <button class="send-btn" aria-label="Enviar mensagem">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CENTER — CARDS / INSPETOR ===== -->
+  <section class="zone" aria-label="Cards e inspetor de Blocos">
+    <div class="zone-head">
+      <span class="icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="7" rx="1.5"/><rect x="3" y="14" width="18" height="7" rx="1.5"/></svg>
+      </span>
+      <h2>Inspetor do Bloco · 7 Blocos</h2>
+    </div>
+
+    <div class="zone-body cards">
+
+      <!-- 1. Gatilho — Aprovado -->
+      <article class="card card-collapsed" style="border-left-color:#06B6D4;">
+        <div class="card-top">
+          <span class="blk-icon" style="background:rgba(6,182,212,.12); color:#0E7490;" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg>
+          </span>
+          <div class="blk-meta">
+            <div class="blk-type">Gatilho</div>
+            <div class="blk-sub">Recebe mensagem · Evolution API</div>
+          </div>
+          <span class="model-badge nollm" title="Bloco sem LLM">sem LLM</span>
+          <span class="badge done" style="margin-left:8px;"><span class="dot"></span>Aprovado</span>
+        </div>
+      </article>
+
+      <!-- 2. Contexto — active/expanded inspector -->
+      <article class="card active">
+        <div class="card-top">
+          <span class="blk-icon" style="background:rgba(71,85,105,.12); color:#475569;" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>
+          </span>
+          <div class="blk-meta">
+            <div class="blk-type">Contexto</div>
+            <div class="blk-sub">Busca histórico do contato</div>
+          </div>
+          <span class="model-badge">Gemini Flash</span>
+          <span class="badge idle" style="margin-left:8px;"><span class="dot"></span>Aguardando</span>
+        </div>
+        <p class="justify">Recupera as últimas conversas e dados do cliente para dar contexto às respostas. <strong>Gemini Flash</strong> equilibra custo baixo e janela ampla para resumir o histórico.</p>
+        <div class="actions">
+          <button class="btn primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Aprovar</button>
+          <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.7 9.7 0 0 1 6.7 2.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.7 9.7 0 0 1-6.7-2.7L3 16"/><path d="M3 21v-5h5"/></svg>Trocar modelo</button>
+          <button class="btn ghost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a9 9 0 0 0-7 14.7L4 21l4.3-1A9 9 0 1 0 12 2z"/><path d="M9 10h6M9 14h4"/></svg>Repensar</button>
+        </div>
+      </article>
+
+      <!-- 3. Decisão-intenção -->
+      <article class="card card-collapsed" style="border-left-color:#334155;">
+        <div class="card-top">
+          <span class="blk-icon" style="background:rgba(51,65,85,.12); color:#334155;" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><path d="M6 9v6M9 18h3a3 3 0 0 0 3-3v0M9 6h3a3 3 0 0 1 3 3v0"/></svg>
+          </span>
+          <div class="blk-meta">
+            <div class="blk-type">Decisão · intenção</div>
+            <div class="blk-sub">Classifica a intenção da mensagem</div>
+          </div>
+          <span class="model-badge">Claude Haiku</span>
+          <span class="badge idle" style="margin-left:8px;"><span class="dot"></span>Aguardando</span>
+        </div>
+      </article>
+
+      <!-- 4. Resposta -->
+      <article class="card card-collapsed" style="border-left-color:#64748B;">
+        <div class="card-top">
+          <span class="blk-icon" style="background:rgba(100,116,139,.14); color:#475569;" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <div class="blk-meta">
+            <div class="blk-type">Resposta</div>
+            <div class="blk-sub">Redige resposta à dúvida</div>
+          </div>
+          <span class="model-badge">Claude Sonnet</span>
+          <span class="badge idle" style="margin-left:8px;"><span class="dot"></span>Aguardando</span>
+        </div>
+      </article>
+
+      <!-- 5. Decisão-escala — Repensando -->
+      <article class="card card-collapsed" style="border-left-color:#334155;">
+        <div class="card-top">
+          <span class="blk-icon" style="background:rgba(51,65,85,.12); color:#334155;" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><path d="M6 9v6M9 18h3a3 3 0 0 0 3-3v0M9 6h3a3 3 0 0 1 3 3v0"/></svg>
+          </span>
+          <div class="blk-meta">
+            <div class="blk-type">Decisão · escala</div>
+            <div class="blk-sub">Detecta reclamação grave</div>
+          </div>
+          <span class="model-badge">Claude Haiku</span>
+          <span class="badge thinking" style="margin-left:8px;"><span class="dot"></span>Repensando</span>
+        </div>
+      </article>
+
+      <!-- 6. Ação-enviar -->
+      <article class="card card-collapsed" style="border-left-color:#06B6D4;">
+        <div class="card-top">
+          <span class="blk-icon" style="background:rgba(6,182,212,.12); color:#0E7490;" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
+          </span>
+          <div class="blk-meta">
+            <div class="blk-type">Ação · enviar</div>
+            <div class="blk-sub">Envia resposta ao cliente</div>
+          </div>
+          <span class="model-badge nollm" title="Bloco sem LLM">sem LLM</span>
+          <span class="badge idle" style="margin-left:8px;"><span class="dot"></span>Aguardando</span>
+        </div>
+      </article>
+
+      <!-- 7. Ação-registrar -->
+      <article class="card card-collapsed" style="border-left-color:#06B6D4;">
+        <div class="card-top">
+          <span class="blk-icon" style="background:rgba(6,182,212,.12); color:#0E7490;" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg>
+          </span>
+          <div class="blk-meta">
+            <div class="blk-type">Ação · registrar</div>
+            <div class="blk-sub">Registra e avisa se for grave</div>
+          </div>
+          <span class="model-badge nollm" title="Bloco sem LLM">sem LLM</span>
+          <span class="badge idle" style="margin-left:8px;"><span class="dot"></span>Aguardando</span>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ===== RIGHT — FLUXO & CONTEXTO ===== -->
+  <section class="zone" aria-label="Fluxo e contexto do agente">
+    <div class="zone-head">
+      <span class="icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="6" height="6" rx="1"/><rect x="13" y="15" width="6" height="6" rx="1"/><path d="M8 9v3a2 2 0 0 0 2 2h6"/></svg>
+      </span>
+      <h2>Fluxo &amp; Contexto</h2>
+    </div>
+
+    <div class="zone-body">
+      <div class="flow" role="img" aria-label="Fluxo vertical de 7 nós: Gatilho, Contexto, Decisão de intenção, Resposta, Decisão de escala, Ação enviar, Ação registrar">
+
+        <!-- Gatilho — stadium -->
+        <div class="node stadium">
+          <span class="n-state" style="background:#15803D;" title="Aprovado"></span>
+          <span class="n-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></span>
+          <span class="n-label">Gatilho</span>
+        </div>
+        <div class="connector"></div>
+
+        <!-- Contexto — rounded rect -->
+        <div class="node rrect">
+          <span class="n-state" style="background:#64748B;" title="Aguardando"></span>
+          <span class="n-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/></svg></span>
+          <span class="n-label">Contexto</span>
+        </div>
+        <div class="connector"></div>
+
+        <!-- Decisão intenção — diamond -->
+        <div class="node diamond">
+          <div class="inner">
+            <span class="n-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><path d="M6 9v6M9 18h3a3 3 0 0 0 3-3M9 6h3a3 3 0 0 1 3 3"/></svg></span>
+            <span class="n-label">Decisão</span>
+            <span class="n-sub">intenção</span>
+          </div>
+        </div>
+        <div class="connector"></div>
+
+        <!-- Resposta — rounded rect -->
+        <div class="node rrect">
+          <span class="n-state" style="background:#64748B;" title="Aguardando"></span>
+          <span class="n-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+          <span class="n-label">Resposta</span>
+        </div>
+        <div class="connector"></div>
+
+        <!-- Decisão escala — diamond (thinking) -->
+        <div class="node diamond" style="border-color:#0E7490;">
+          <div class="inner">
+            <span class="n-icon" aria-hidden="true" style="color:#0E7490;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><path d="M6 9v6M9 18h3a3 3 0 0 0 3-3M9 6h3a3 3 0 0 1 3 3"/></svg></span>
+            <span class="n-label">Decisão</span>
+            <span class="n-sub" style="color:#0E7490;">escala</span>
+          </div>
+        </div>
+        <div class="connector"></div>
+
+        <!-- Ação enviar — stadium -->
+        <div class="node stadium">
+          <span class="n-state" style="background:#64748B;" title="Aguardando"></span>
+          <span class="n-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg></span>
+          <span class="n-label">Ação · enviar</span>
+        </div>
+        <div class="connector"></div>
+
+        <!-- Ação registrar — stadium -->
+        <div class="node stadium">
+          <span class="n-state" style="background:#64748B;" title="Aguardando"></span>
+          <span class="n-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+          <span class="n-label">Ação · registrar</span>
+        </div>
+
+      </div>
+
+      <div class="legend" aria-hidden="true">
+        <span><i style="background:#15803D;"></i>Concluído</span>
+        <span><i style="background:#0E7490;"></i>Pensando</span>
+        <span><i style="background:#64748B;"></i>Aguardando</span>
+      </div>
+    </div>
+
+    <!-- agent state panel -->
+    <div class="state-panel">
+      <h3>Estado do agente</h3>
+      <div class="state-row"><span class="k">Agente</span><span class="v mono">atendimento-whatsapp</span></div>
+      <div class="state-row"><span class="k">Estado</span><span class="badge thinking"><span class="dot"></span>Pensando</span></div>
+      <div class="state-row"><span class="k">Blocos aprovados</span><span class="v">1 / 7</span></div>
+      <div class="state-row"><span class="k">Provedores</span><span class="v mono">Anthropic · Google · Evolution</span></div>
+      <button class="run-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        Rodar Modo de Teste
+      </button>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>
