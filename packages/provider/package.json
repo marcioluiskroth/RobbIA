@@ -9,9 +9,15 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
   },
   "dependencies": {
-    "@robbia/shared": "workspace:*"
+    "@anthropic-ai/sdk": "^0.104.1",
+    "@google/genai": "^2.8.0",
+    "@robbia/shared": "workspace:*",
+    "ollama": "^0.6.3",
+    "openai": "^6.42.0",
+    "zod": "^4.4.3"
   }
 }

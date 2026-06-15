@@ -1,2 +1,12 @@
-// @robbia/provider — esqueleto (Story 1.1). A implementacao entra nas stories seguintes.
-export const PACKAGE_NAME = '@robbia/provider' as const
+export { ClaudeProvider } from './adapters/claude'
+export * from './adapters/fake'
+export { GeminiProvider } from './adapters/gemini'
+export { GptProvider } from './adapters/gpt'
+export { OllamaProvider } from './adapters/ollama'
+export { OpenRouterProvider } from './adapters/openrouter'
+export * from './base'
+export * from './errors'
+export * from './normalize'
+export * from './provider'
+export * from './registry'
+export * from './types'
