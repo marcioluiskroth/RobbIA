@@ -25,6 +25,7 @@ export function ModelSelector({
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const listboxRef = useRef<HTMLDivElement>(null)
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([])
   const wasOpen = useRef(false)
 
@@ -53,10 +54,8 @@ export function ModelSelector({
     if (!open) return
     function onDocMouseDown(event: MouseEvent) {
       const target = event.target as Node
-      if (
-        !triggerRef.current?.contains(target) &&
-        !optionRefs.current.some((el) => el?.contains(target))
-      ) {
+      // Fora = nem o gatilho nem QUALQUER parte do painel (inclui cabeçalhos de grupo e padding).
+      if (!triggerRef.current?.contains(target) && !listboxRef.current?.contains(target)) {
         setOpen(false)
       }
     }
@@ -100,6 +99,7 @@ export function ModelSelector({
 
       {open ? (
         <div
+          ref={listboxRef}
           role="listbox"
           aria-label={COPY.modelSelectorLabel}
           onKeyDown={onListKeyDown}

@@ -95,11 +95,13 @@ export function BuilderWorkspace() {
   /** Repensar: gera alternativa só deste Bloco, preservando os demais (inclusive aprovados). */
   async function handleRethink(index: number) {
     if (!proposal) return
+    const previousStatus = review[index] ?? 'proposto'
     setReview((state) => startRethink(state, index))
     const result = await rethinkBlockAction(proposal, index)
 
     if (!result.ok) {
-      setReview((state) => settleRethink(state, index))
+      // Falhou: nada mudou → restaura o status anterior (não rebaixa um Bloco aprovado).
+      setReview((state) => state.map((status, i) => (i === index ? previousStatus : status)))
       addTurn(
         'assistant',
         isProviderIssue(result.error.code) ? COPY.noProviderDescription : COPY.rethinkError,
