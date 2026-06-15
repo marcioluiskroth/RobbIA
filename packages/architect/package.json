@@ -9,9 +9,12 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
   },
   "dependencies": {
-    "@robbia/shared": "workspace:*"
+    "@robbia/provider": "workspace:*",
+    "@robbia/shared": "workspace:*",
+    "zod": "^4.4.3"
   }
 }
