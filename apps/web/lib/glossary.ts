@@ -35,4 +35,14 @@ export const COPY = {
   builderFlowDescription:
     'A sequência de Blocos do Harness é desenhada nesta zona após a proposta.',
   comingSoon: 'Em breve',
+  // Story 1.7 — apresentação e geração
+  noLlmBadge: 'sem LLM',
+  blockListLabel: 'Blocos do Harness',
+  generating: 'Decompondo a descrição em Blocos…',
+  proposalSummary: (n: number) =>
+    `Propus ${n} ${n === 1 ? 'Bloco' : 'Blocos'}. Revise cada um nos cards e no fluxo.`,
+  noProviderTitle: 'Configure um Provider',
+  noProviderDescription:
+    'Para a IA Arquiteta propor um Harness, configure um Provider e um Modelo de IA no Workspace.',
+  generationError: 'Não consegui gerar a proposta agora. Tente novamente em instantes.',
 } as const

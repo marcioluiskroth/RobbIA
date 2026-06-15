@@ -3,7 +3,7 @@ baseline_commit: 6ad6644476acc79f20ca51117b042a38cd428219
 ---
 # Story 1.7: Apresentação do Harness em cards e fluxo visual
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -36,30 +36,30 @@ so that eu entenda cada Bloco e o encadeamento do Harness antes de decidir.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Dependência ReactFlow (AC: 2)**
-  - [ ] Em `apps/web`: adicionar `@xyflow/react` (ReactFlow v12 — compatível com React 19). Importar o CSS base `@xyflow/react/dist/style.css` uma vez (no componente de fluxo ou layout do Builder).
-  - [ ] `biome.json` já exclui `**/*.css` — não há lint sobre o CSS do ReactFlow. Confirmar que o `next build` empacota o estilo.
-- [ ] **Task 2 — Mapeamento puro Harness → grafo (AC: 2, 3) [red-green]**
-  - [ ] `apps/web/lib/harness-flow.ts`: `harnessToFlow(harness)` **puro** → `{ nodes, edges }`. Cada Bloco vira um nó `id: "block-{index}"` com `data: { index, block }` e posição determinística (layout vertical por índice, ex.: `{ x: 0, y: index * 96 }`). Arestas **sequenciais** `block-{i} → block-{i+1}` (encadeamento por ordem). Sem efeitos; sem `Math.random()`/`Date.now()`.
-  - [ ] `apps/web/lib/block-presentation.ts`: helpers puros — `hasModelBadge(block) = block.model != null` e (se útil) `blockCardLabel`. Centraliza a regra "sem LLM → sem badge".
-- [ ] **Task 3 — BlockCard (AC: 1)**
-  - [ ] `apps/web/components/builder/block-card.tsx`: `BlockCard` (Server Component — sem estado) com ícone do Tipo (`blockTypeVisual(type).icon`), título (nome), justificativa (1 linha, truncada), badge de Modelo em `font-mono` **só quando** `hasModelBadge`, e **borda colorida por Tipo** (reusar o mapa `BORDER_CLASS` da vitrine `/design` — extrair para `lib/block-types.ts` como `blockBorderClass(token)` para fonte única; **não** duplicar). Estado selecionado vs. não-selecionado por realce **não-cromático** (peso/anel), não só cor.
-- [ ] **Task 4 — FlowNode + HarnessFlow (ReactFlow) (AC: 2)**
-  - [ ] `apps/web/components/flow/flow-node.tsx` (`'use client'`): nó custom do ReactFlow — forma por Tipo (`shape` de `BLOCK_TYPE_VISUALS`: stadium/rounded-rect/diamond/sharp-rect/hexagon via classes/clip-path), cor de borda por Tipo, ícone + nome. `Handle` de origem/alvo apenas para desenhar arestas (não conectáveis).
-  - [ ] `apps/web/components/flow/harness-flow.tsx` (`'use client'`): `HarnessFlow({ harness, selectedIndex, onSelectBlock })` — monta `nodes/edges` via `harnessToFlow`, registra `nodeTypes`, **read-first** (`nodesDraggable={false}`, `nodesConnectable={false}`, `edgesFocusable={false}`, `elementsSelectable`, `fitView`, `proOptions={{ hideAttribution: true }}`), `onNodeClick → onSelectBlock(index)`. Marca o nó `selected` quando `index === selectedIndex`. Inclui `<Background/>` e `<Controls showInteractive={false}/>`. O container do canvas é decorativo para AT → **`aria-hidden="true"`** (o caminho acessível é a `BlockList`, AC3). **SSR:** ReactFlow é client-only — se houver erro de hydration, importar via `next/dynamic` com `ssr: false`. Edge id determinístico `e-{i}-{i+1}`.
-- [ ] **Task 5 — Lista não-canvas acessível (AC: 3)**
-  - [ ] `apps/web/components/builder/block-list.tsx` (`'use client'`): `BlockList({ harness, selectedIndex, onSelectBlock })` — `<ul>` de Blocos (ordem + ícone do Tipo + nome) com cada item como `<button>` focável; clique/**Enter**/Space → `onSelectBlock(index)`. `aria-current`/`aria-selected` no item ativo. É o **espelho acessível** do canvas (UX-DR7) — sempre presente, não um modo escondido.
-- [ ] **Task 6 — Geração e integração no Builder (AC: 1, 2, 3)**
-  - [ ] `apps/web/lib/architect-config.ts`: helper **puro** `resolveArchitectConfig(env)` → `{ ok: true, kind, model, config } | { ok: false, reason: 'no-provider' | 'no-key' }`. Lê `ARCHITECT_PROVIDER` (um de `ProviderKind`), `ARCHITECT_MODEL` e a chave do Provider (`ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/`GEMINI_API_KEY`/`OPENROUTER_API_KEY`; Ollama dispensa chave, usa `OLLAMA_BASE_URL` opcional). Separar o parsing do env da ação torna-o **testável headless** (Task 7). Atualizar `.env.example` com essas vars (comentadas, sem valores).
-  - [ ] `apps/web/app/(workspace)/builder/actions.ts` (`'use server'`): server action `proposeHarness(description)` → usa `resolveArchitectConfig(process.env)`; se `ok:false` retorna `Result` err com código legível (`ARCHITECT_NO_PROVIDER`); senão monta `createProviderRegistry({ [kind]: config })`, pega `registry.get(kind)` e chama `decompose(provider, { description, model })`. Retorna o `ArchitectResponse` (`harness | clarification`) embrulhado em `Result` **serializável** (objeto plano — nada de classes/funções cruzando a fronteira server→client). **Segredos só no servidor**, nunca no client nem no retorno. Sem persistência.
-  - [ ] `apps/web/components/builder/builder-workspace.tsx` (`'use client'`): eleva o estado do Builder — conversa (turnos), `proposal` (Harness | null), `selectedIndex` (default **0** ao receber nova proposta), status do agente. Envia a descrição → `proposeHarness` (transição `MascotCore`: `thinking` durante, `done`/`error` depois). Resposta `harness` → popula cards/fluxo + turno `assistant` resumindo ("Propus N Blocos…"); `clarification` → perguntas como turno `assistant` na Conversa; `Result` err → estado de erro legível (inclui o caminho `ARCHITECT_NO_PROVIDER` → "configure um Provider no Workspace", link `/workspace`).
-  - [ ] Integrar no `apps/web/app/(workspace)/builder/page.tsx`: a `BuilderLayout` passa a receber as 3 zonas do `BuilderWorkspace` — Conversa (`ChatComposer` + turnos), centro (`BlockCard` do Bloco selecionado **ou** `EmptyState` quando sem proposta), direita (`HarnessFlow` + `BlockList` + `MascotCore`; `EmptyState` quando sem proposta). Seleção sincronizada entre nó, lista e card.
-- [ ] **Task 7 — Testes de lógica pura (AC: 1, 2, 3) [red-green]**
-  - [ ] `apps/web/lib/harness-flow.test.ts`: N Blocos → N nós + (N−1) arestas; ids determinísticos (`block-0..`); ordem preservada; arestas conectam consecutivos; mesma entrada → mesma saída.
-  - [ ] `apps/web/lib/block-presentation.test.ts`: `hasModelBadge` true com `model`, false sem `model` (Bloco "sem LLM"); determinístico.
-  - [ ] `apps/web/lib/architect-config.test.ts`: `resolveArchitectConfig` — env completo (provider+model+chave) → `ok:true` com os campos certos; sem `ARCHITECT_PROVIDER` → `no-provider`; provider que exige chave sem a chave → `no-key`; Ollama sem chave → `ok:true`. Puro (recebe um objeto de env, não lê `process.env`).
-- [ ] **Task 8 — Verificação (AC: 1, 2, 3)**
-  - [ ] `bun run lint` (Biome), `bun run typecheck`, `bun run test` verdes. `bun run build` (Next) compila com o ReactFlow. *(Verificação visual real do navegador é manual — abrir `/builder`, gerar uma proposta, conferir cards/fluxo/lista e o clique-no-nó→foco.)*
+- [x] **Task 1 — Dependência ReactFlow (AC: 2)**
+  - [x] Em `apps/web`: adicionar `@xyflow/react` (ReactFlow v12 — compatível com React 19). Importar o CSS base `@xyflow/react/dist/style.css` uma vez (no componente de fluxo ou layout do Builder).
+  - [x] `biome.json` já exclui `**/*.css` — não há lint sobre o CSS do ReactFlow. Confirmar que o `next build` empacota o estilo.
+- [x] **Task 2 — Mapeamento puro Harness → grafo (AC: 2, 3) [red-green]**
+  - [x] `apps/web/lib/harness-flow.ts`: `harnessToFlow(harness)` **puro** → `{ nodes, edges }`. Cada Bloco vira um nó `id: "block-{index}"` com `data: { index, block }` e posição determinística (layout vertical por índice, ex.: `{ x: 0, y: index * 96 }`). Arestas **sequenciais** `block-{i} → block-{i+1}` (encadeamento por ordem). Sem efeitos; sem `Math.random()`/`Date.now()`.
+  - [x] `apps/web/lib/block-presentation.ts`: helpers puros — `hasModelBadge(block) = block.model != null` e (se útil) `blockCardLabel`. Centraliza a regra "sem LLM → sem badge".
+- [x] **Task 3 — BlockCard (AC: 1)**
+  - [x] `apps/web/components/builder/block-card.tsx`: `BlockCard` (Server Component — sem estado) com ícone do Tipo (`blockTypeVisual(type).icon`), título (nome), justificativa (1 linha, truncada), badge de Modelo em `font-mono` **só quando** `hasModelBadge`, e **borda colorida por Tipo** (reusar o mapa `BORDER_CLASS` da vitrine `/design` — extrair para `lib/block-types.ts` como `blockBorderClass(token)` para fonte única; **não** duplicar). Estado selecionado vs. não-selecionado por realce **não-cromático** (peso/anel), não só cor.
+- [x] **Task 4 — FlowNode + HarnessFlow (ReactFlow) (AC: 2)**
+  - [x] `apps/web/components/flow/flow-node.tsx` (`'use client'`): nó custom do ReactFlow — forma por Tipo (`shape` de `BLOCK_TYPE_VISUALS`: stadium/rounded-rect/diamond/sharp-rect/hexagon via classes/clip-path), cor de borda por Tipo, ícone + nome. `Handle` de origem/alvo apenas para desenhar arestas (não conectáveis).
+  - [x] `apps/web/components/flow/harness-flow.tsx` (`'use client'`): `HarnessFlow({ harness, selectedIndex, onSelectBlock })` — monta `nodes/edges` via `harnessToFlow`, registra `nodeTypes`, **read-first** (`nodesDraggable={false}`, `nodesConnectable={false}`, `edgesFocusable={false}`, `elementsSelectable`, `fitView`, `proOptions={{ hideAttribution: true }}`), `onNodeClick → onSelectBlock(index)`. Marca o nó `selected` quando `index === selectedIndex`. Inclui `<Background/>` e `<Controls showInteractive={false}/>`. O container do canvas é decorativo para AT → **`aria-hidden="true"`** (o caminho acessível é a `BlockList`, AC3). **SSR:** ReactFlow é client-only — se houver erro de hydration, importar via `next/dynamic` com `ssr: false`. Edge id determinístico `e-{i}-{i+1}`.
+- [x] **Task 5 — Lista não-canvas acessível (AC: 3)**
+  - [x] `apps/web/components/builder/block-list.tsx` (`'use client'`): `BlockList({ harness, selectedIndex, onSelectBlock })` — `<ul>` de Blocos (ordem + ícone do Tipo + nome) com cada item como `<button>` focável; clique/**Enter**/Space → `onSelectBlock(index)`. `aria-current`/`aria-selected` no item ativo. É o **espelho acessível** do canvas (UX-DR7) — sempre presente, não um modo escondido.
+- [x] **Task 6 — Geração e integração no Builder (AC: 1, 2, 3)**
+  - [x] `apps/web/lib/architect-config.ts`: helper **puro** `resolveArchitectConfig(env)` → `{ ok: true, kind, model, config } | { ok: false, reason: 'no-provider' | 'no-key' }`. Lê `ARCHITECT_PROVIDER` (um de `ProviderKind`), `ARCHITECT_MODEL` e a chave do Provider (`ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/`GEMINI_API_KEY`/`OPENROUTER_API_KEY`; Ollama dispensa chave, usa `OLLAMA_BASE_URL` opcional). Separar o parsing do env da ação torna-o **testável headless** (Task 7). Atualizar `.env.example` com essas vars (comentadas, sem valores).
+  - [x] `apps/web/app/(workspace)/builder/actions.ts` (`'use server'`): server action `proposeHarness(description)` → usa `resolveArchitectConfig(process.env)`; se `ok:false` retorna `Result` err com código legível (`ARCHITECT_NO_PROVIDER`); senão monta `createProviderRegistry({ [kind]: config })`, pega `registry.get(kind)` e chama `decompose(provider, { description, model })`. Retorna o `ArchitectResponse` (`harness | clarification`) embrulhado em `Result` **serializável** (objeto plano — nada de classes/funções cruzando a fronteira server→client). **Segredos só no servidor**, nunca no client nem no retorno. Sem persistência.
+  - [x] `apps/web/components/builder/builder-workspace.tsx` (`'use client'`): eleva o estado do Builder — conversa (turnos), `proposal` (Harness | null), `selectedIndex` (default **0** ao receber nova proposta), status do agente. Envia a descrição → `proposeHarness` (transição `MascotCore`: `thinking` durante, `done`/`error` depois). Resposta `harness` → popula cards/fluxo + turno `assistant` resumindo ("Propus N Blocos…"); `clarification` → perguntas como turno `assistant` na Conversa; `Result` err → estado de erro legível (inclui o caminho `ARCHITECT_NO_PROVIDER` → "configure um Provider no Workspace", link `/workspace`).
+  - [x] Integrar no `apps/web/app/(workspace)/builder/page.tsx`: a `BuilderLayout` passa a receber as 3 zonas do `BuilderWorkspace` — Conversa (`ChatComposer` + turnos), centro (`BlockCard` do Bloco selecionado **ou** `EmptyState` quando sem proposta), direita (`HarnessFlow` + `BlockList` + `MascotCore`; `EmptyState` quando sem proposta). Seleção sincronizada entre nó, lista e card.
+- [x] **Task 7 — Testes de lógica pura (AC: 1, 2, 3) [red-green]**
+  - [x] `apps/web/lib/harness-flow.test.ts`: N Blocos → N nós + (N−1) arestas; ids determinísticos (`block-0..`); ordem preservada; arestas conectam consecutivos; mesma entrada → mesma saída.
+  - [x] `apps/web/lib/block-presentation.test.ts`: `hasModelBadge` true com `model`, false sem `model` (Bloco "sem LLM"); determinístico.
+  - [x] `apps/web/lib/architect-config.test.ts`: `resolveArchitectConfig` — env completo (provider+model+chave) → `ok:true` com os campos certos; sem `ARCHITECT_PROVIDER` → `no-provider`; provider que exige chave sem a chave → `no-key`; Ollama sem chave → `ok:true`. Puro (recebe um objeto de env, não lê `process.env`).
+- [x] **Task 8 — Verificação (AC: 1, 2, 3)**
+  - [x] `bun run lint` (Biome), `bun run typecheck`, `bun run test` verdes. `bun run build` (Next) compila com o ReactFlow. *(Verificação visual real do navegador é manual — abrir `/builder`, gerar uma proposta, conferir cards/fluxo/lista e o clique-no-nó→foco.)*
 
 ## Dev Notes
 
@@ -143,11 +143,46 @@ so that eu entenda cada Bloco e o encadeamento do Harness antes de decidir.
 
 ### Agent Model Used
 
+claude-opus-4-8 (1M context) — BMad dev-story workflow
+
 ### Debug Log References
+
+- Lógica pura primeiro (harness-flow/block-presentation/architect-config) com testes (`bun test`) → 16 pass antes da UI.
+- **Deps faltando:** `apps/web` não dependia de `@robbia/architect`/`@robbia/provider` → adicionados (`workspace:*`) + `bun install`. O erro de índice em `architect-config` era cascata do `ProviderKind` não resolvido.
+- **`@xyflow/react` v12** (React 19). Tipos: `NodeProps` sem genérico + cast `data as unknown as FlowNodeData` (FlowNodeData não tem index signature p/ o constraint `Record<string,unknown>` do xyflow); `nodes/edges as unknown as Node[]/Edge[]`.
+- **`.env.example` usava `GOOGLE_API_KEY`** (não `GEMINI_API_KEY`) → `architect-config` alinhado à convenção existente.
+- **AC2 (sem scroll horizontal) — bug do `BuilderLayout` (1.6) exposto:** colunas fixas `20rem+22rem` estouravam na faixa 1024–1280px. Corrigido: grid de 3 colunas movido para `xl:` (≥1280) com `minmax(0,1fr)` no centro; abaixo de 1280 empilha. Verificado no navegador a 1280 (3 col) e 1100 (stacked) — sem scroll horizontal.
+- `biome` `noArrayIndexKey` na `BlockList`: suprimido com justificativa (lista estática de proposta, sem reorder, Blocos sem id).
+- `next build` reescreve `next-env.d.ts` → revertido p/ a versão limpa committada.
+- Verde em estado limpo: typecheck 16/16, lint 154 arquivos, `bun test apps/web` **35 pass** (8 arquivos), `next build` OK (6 rotas, ReactFlow empacotado).
+- **Smoke no navegador:** descrição → server action → caminho `ARCHITECT_NO_PROVIDER` (sem chave no env) → turno `assistant` "configure um Provider" + `MascotCore` Erro. Wiring end-to-end validado sem credencial.
 
 ### Completion Notes List
 
+- ✅ **AC1 — BlockCard:** ícone do Tipo + nome + badge de Modelo (`font-mono`) + justificativa + borda colorida por Tipo (`blockBorderClass`). Bloco "sem LLM" exibe badge muted "sem LLM" em vez do Modelo (`hasModelBadge`).
+- ✅ **AC2 — Fluxo ReactFlow read-first:** `FlowNode` por Tipo (forma via `clip-path` + cor + ícone), `HarnessFlow` com `nodesDraggable/Connectable=false`, `fitView`, clique-no-nó → foca o Bloco; canvas `aria-hidden`. Mapa `harnessToFlow` puro/testado.
+- ✅ **AC3 — Lista não-canvas:** `BlockList` (botões focáveis, Enter/Espaço nativos, `aria-current`) espelha o fluxo; mesma `selectedIndex` que o canvas e o card.
+- ✅ **Ponte de geração:** server action `proposeHarness` (`resolveArchitectConfig(env)` → `createProviderRegistry` → `decompose`); `BuilderWorkspace` orquestra conversa/proposta/seleção/estado do agente; `ChatComposer` refatorado para controlado. Trata `harness` (cards+fluxo+resumo), `clarification` (perguntas) e erro (`no-provider`/`no-key` → "configure um Provider").
+- 📌 **Reuso/fonte única:** `blockBorderClass` extraído p/ `lib/block-types.ts` (vitrine `/design` atualizada a consumi-lo); `BLOCK_TYPE_VISUALS`/`MascotCore`/`EmptyState`/glossário reusados.
+- 📌 **Anti-scope respeitado:** sem Aprovar/Trocar/Repensar nem `ModelSelector` (1.8), sem editor de arestas, sem persistência, sem UI de Provider (só env).
+- 📌 **Manual:** o render real de cards/fluxo precisa de um Provider configurado no env (`ARCHITECT_PROVIDER`/`ARCHITECT_MODEL` + chave). Sem isso, o caminho "configure um Provider" é exercido.
+
 ### File List
+
+**apps/web (novos):**
+- `lib/harness-flow.ts` · `lib/block-presentation.ts` · `lib/architect-config.ts` (+ `*.test.ts` dos três)
+- `components/builder/{block-card,block-list,builder-workspace}.tsx`
+- `components/flow/{flow-node,harness-flow}.tsx`
+- `app/(workspace)/builder/actions.ts`
+
+**apps/web (modificados):**
+- `app/(workspace)/builder/page.tsx` (renderiza `BuilderWorkspace`)
+- `components/builder/chat-composer.tsx` (controlado: `turns`/`onSubmit`/`busy`)
+- `components/builder/builder-layout.tsx` (3 colunas em `xl`, sem scroll horizontal na faixa 1024–1280)
+- `lib/block-types.ts` (+`blockBorderClass`) · `app/design/page.tsx` (usa o helper) · `lib/glossary.ts` (+copy 1.7)
+- `package.json` (+`@robbia/architect`, `@robbia/provider`, `@xyflow/react`)
+
+**raiz (modificados):** `.env.example` (vars do architect) · `bun.lock`
 
 ## Change Log
 
@@ -155,3 +190,4 @@ so that eu entenda cada Bloco e o encadeamento do Harness antes de decidir.
 |------|---------|
 | 2026-06-15 | Story 1.7 criada (ready-for-dev): apresentação do Harness como `BlockCard` (centro) + fluxo `ReactFlow` read-first (direita) + lista não-canvas acessível; clique-no-nó/Enter-na-lista focam o mesmo Bloco. Inclui a ponte de geração (server action `proposeHarness` → `@robbia/architect`, provider via env) que liga o `ChatComposer` (1.6) ao motor (1.4). Reusa `BLOCK_TYPE_VISUALS` (1.5). Anti-scope: sem Aprovar/Trocar/Repensar (1.8), sem editor de arestas, sem persistência, sem UI de Provider. |
 | 2026-06-15 | Revisão de qualidade aplicada: (1) contrato de env do server action especificado + helper puro testável `resolveArchitectConfig` + `.env.example` + estados `no-provider`/`no-key`; (2) ReactFlow `aria-hidden` no canvas (lista é o caminho acessível) + nota de SSR (`next/dynamic ssr:false` se preciso) + edge id determinístico; (3) `selectedIndex` default 0 na nova proposta + turno `assistant` no sucesso; (4) `architect-config` no File List + teste dedicado. |
+| 2026-06-15 | Story 1.7 implementada: `BlockCard` (badge sem-LLM), `HarnessFlow`/`FlowNode` ReactFlow read-first (forma+cor+ícone por Tipo, clique→foco, canvas `aria-hidden`), `BlockList` acessível, ponte de geração (server action `proposeHarness` → `@robbia/architect`, provider via env), `BuilderWorkspace` orquestrando conversa/proposta/seleção/estado, `ChatComposer` → controlado. `blockBorderClass` extraído (fonte única). Correção AC2: grid 3-col movido p/ `xl` (sem scroll horizontal na faixa 1024–1280). +16 testes (35 total web). typecheck/lint/test/build verdes; smoke do server action no navegador. **Status → review.** |

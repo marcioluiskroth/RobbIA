@@ -37,3 +37,15 @@ export const BLOCK_TYPE_VISUALS: Record<BlockType, BlockTypeVisual> = {
 export function blockTypeVisual(type: BlockType): BlockTypeVisual {
   return BLOCK_TYPE_VISUALS[type]
 }
+
+/** Classe Tailwind de borda por token de cor — fonte única (vitrine /design, BlockCard, FlowNode). */
+const BORDER_CLASS: Record<BlockColorToken, string> = {
+  cyan: 'border-cyan',
+  slate: 'border-slate',
+  steel: 'border-steel',
+  graphite: 'border-graphite',
+}
+
+export function blockBorderClass(token: BlockColorToken): string {
+  return BORDER_CLASS[token]
+}

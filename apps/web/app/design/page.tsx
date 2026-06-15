@@ -3,15 +3,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { MascotCore } from '@/components/ui/mascot-core'
 import { StateBadge } from '@/components/ui/state-badge'
 import { AGENT_STATE_KEYS } from '@/lib/agent-state'
-import { type BlockColorToken, blockTypeVisual } from '@/lib/block-types'
-
-/** Borda por Tipo de Bloco (DESIGN.md) — ciano reservado a Gatilho/Ação. */
-const BORDER_CLASS: Record<BlockColorToken, string> = {
-  cyan: 'border-cyan',
-  slate: 'border-slate',
-  steel: 'border-steel',
-  graphite: 'border-graphite',
-}
+import { blockBorderClass, blockTypeVisual } from '@/lib/block-types'
 
 const PALETTE: { group: string; swatches: { label: string; className: string }[] }[] = [
   {
@@ -96,7 +88,7 @@ export default function DesignSystemPage() {
             return (
               <li
                 key={type}
-                className={`flex items-center gap-2 rounded-md border-l-4 bg-surface p-3 ${BORDER_CLASS[v.borderColorToken]}`}
+                className={`flex items-center gap-2 rounded-md border-l-4 bg-surface p-3 ${blockBorderClass(v.borderColorToken)}`}
               >
                 <Icon size={18} aria-hidden />
                 <span className="font-mono text-sm">{type}</span>
