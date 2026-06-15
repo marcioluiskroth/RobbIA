@@ -45,4 +45,16 @@ export const COPY = {
   noProviderDescription:
     'Para a IA Arquiteta propor um Harness, configure um Provider e um Modelo de IA no Workspace.',
   generationError: 'Não consegui gerar a proposta agora. Tente novamente em instantes.',
+  // Story 1.8 — aprovação e customização
+  approve: 'Aprovar',
+  swapModel: 'Trocar modelo',
+  rethink: 'Repensar',
+  modelSelectorLabel: 'Escolher Modelo de IA',
+  costLabel: 'custo',
+  latencyLabel: 'latência',
+  rethinkError: 'Não consegui repensar este Bloco agora. Tente novamente.',
+  publish: 'Publicar',
+  publishHint: 'Disponível na operação 24/7 (próximo épico).',
+  approvedSummary: (approved: number, total: number) =>
+    `${approved} de ${total} ${total === 1 ? 'Bloco aprovado' : 'Blocos aprovados'}`,
 } as const
