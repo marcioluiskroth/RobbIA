@@ -3,7 +3,7 @@ baseline_commit: 6ad6644476acc79f20ca51117b042a38cd428219
 ---
 # Story 1.7: Apresentação do Harness em cards e fluxo visual
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -191,3 +191,4 @@ claude-opus-4-8 (1M context) — BMad dev-story workflow
 | 2026-06-15 | Story 1.7 criada (ready-for-dev): apresentação do Harness como `BlockCard` (centro) + fluxo `ReactFlow` read-first (direita) + lista não-canvas acessível; clique-no-nó/Enter-na-lista focam o mesmo Bloco. Inclui a ponte de geração (server action `proposeHarness` → `@robbia/architect`, provider via env) que liga o `ChatComposer` (1.6) ao motor (1.4). Reusa `BLOCK_TYPE_VISUALS` (1.5). Anti-scope: sem Aprovar/Trocar/Repensar (1.8), sem editor de arestas, sem persistência, sem UI de Provider. |
 | 2026-06-15 | Revisão de qualidade aplicada: (1) contrato de env do server action especificado + helper puro testável `resolveArchitectConfig` + `.env.example` + estados `no-provider`/`no-key`; (2) ReactFlow `aria-hidden` no canvas (lista é o caminho acessível) + nota de SSR (`next/dynamic ssr:false` se preciso) + edge id determinístico; (3) `selectedIndex` default 0 na nova proposta + turno `assistant` no sucesso; (4) `architect-config` no File List + teste dedicado. |
 | 2026-06-15 | Story 1.7 implementada: `BlockCard` (badge sem-LLM), `HarnessFlow`/`FlowNode` ReactFlow read-first (forma+cor+ícone por Tipo, clique→foco, canvas `aria-hidden`), `BlockList` acessível, ponte de geração (server action `proposeHarness` → `@robbia/architect`, provider via env), `BuilderWorkspace` orquestrando conversa/proposta/seleção/estado, `ChatComposer` → controlado. `blockBorderClass` extraído (fonte única). Correção AC2: grid 3-col movido p/ `xl` (sem scroll horizontal na faixa 1024–1280). +16 testes (35 total web). typecheck/lint/test/build verdes; smoke do server action no navegador. **Status → review.** |
+| 2026-06-15 | Mergeada na `main` (PR #9); ciclo de review encerrado. **Status → done.** |

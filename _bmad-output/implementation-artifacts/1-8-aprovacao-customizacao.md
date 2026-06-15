@@ -3,7 +3,7 @@ baseline_commit: 9657aa525bd905c4cd68c515ba308cbd75175602
 ---
 # Story 1.8: Aprovação e customização por Bloco
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -152,3 +152,4 @@ claude-opus-4-8 (1M context) — BMad dev-story workflow
 | 2026-06-15 | Story 1.8 criada (ready-for-dev): aprovação/customização por Bloco — ações no `BlockCard` (Aprovar/Trocar modelo/Repensar), `ModelSelector` acessível agrupado por Provider (teclado + retorno de foco), estado por Bloco (`proposto→aprovado/modelo-trocado/repensando`) e elegibilidade de publicação (todos aprovados). `rethinkBlock` adicionado a `@robbia/architect` (preserva os demais Blocos). Catálogo de Modelos estático. Constrói sobre o `BuilderWorkspace` (1.7). Anti-scope: sem publish/deploy real (Epic 3), sem persistência, sem edição livre/arestas. |
 | 2026-06-15 | Story 1.8 implementada: `block-review` (máquina de estado pura) + `block-status-visuals` + `model-catalog`; `ModelSelector` (listbox roving-tabindex acessível); `BlockCard` com ações + status; `rethinkBlock` no architect + `rethinkBlockAction`; `BuilderWorkspace` com reviewState/handlers/barra de publicação; `BlockList` com status. +diversos testes (59 total web+architect). typecheck/lint/test/build verdes. **Status → review.** Fecha o fluxo build-time do Épico 1. |
 | 2026-06-15 | Code review aplicado: (1) `ModelSelector` não fecha mais ao clicar em cabeçalho de grupo / padding do painel (passa a usar `listboxRef` no check de clique-fora); (2) Repensar que falha restaura o status anterior do Bloco (não rebaixa um Bloco aprovado). Verde em typecheck/lint/test/build. |
+| 2026-06-15 | Mergeada na `main` (PR #12) após code review; ciclo encerrado. **Status → done.** Fecha o build-time do Épico 1. |

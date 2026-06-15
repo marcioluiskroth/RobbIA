@@ -3,7 +3,7 @@ baseline_commit: 3b33593e81570a4f1978153194e29623d7630b85
 ---
 # Story 1.6: Bancada do Builder — navegação, layout de 3 zonas e entrada em linguagem natural
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -181,3 +181,4 @@ claude-opus-4-8 (1M context) — BMad dev-story workflow
 | 2026-06-14 | Story 1.6 criada (ready-for-dev): shell da bancada — navegação primária (4 surfaces), Builder de 3 zonas responsivo (colapsa em abas sob reflow/zoom), ChatComposer com refino contínuo + glossário canônico, Harnesses com first-run guiado. UI em apps/web; reusa design system da 1.5. Anti-scope: sem BlockCard/FlowNode (1.7), sem ModelSelector/aprovação (1.8), sem API/geração. |
 | 2026-06-14 | Revisão de qualidade aplicada: (1) corrigida suposição de shadcn/Tabs — projeto é hand-rolled, sem Radix; vista compacta passa a **stacked** por padrão; (2) papéis da conversa `user`/`assistant` (era `arquiteto`/`arquiteta`, ambíguo); (3) `id` do turno via `crypto.randomUUID()` (sem `Math.random`/`Date.now`); (4) mock-builder ancorado na Task 1; (5) `metadata.title` por rota; (6) skip-to-content link (WCAG 2.4.1). |
 | 2026-06-15 | Story 1.6 implementada: app shell `(workspace)` com navegação primária (4 surfaces, ativo por `aria-current`+peso) + skip-link; Harnesses com first-run guiado; Builder de 3 zonas (stacked responsivo, rem, sem scroll horizontal) com `MascotCore idle` + placeholders; `ChatComposer` (refino contínuo, Enter/Shift+Enter, glossário canônico); Operação/Workspace shell. `/` → redirect Harnesses. Lógica pura (navigation/glossary/conversation) +19 testes. typecheck/lint/test/build verdes. **Status → review.** |
+| 2026-06-15 | Mergeada na `main` (PR #7); ciclo de review encerrado. **Status → done.** |
