@@ -10,6 +10,7 @@
       "!**/dist",
       "!**/.turbo",
       "!**/drizzle",
+      "!**/*.css",
       "!_bmad-output"
     ]
   },

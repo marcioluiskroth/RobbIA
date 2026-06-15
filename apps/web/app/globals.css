@@ -1,1 +1,76 @@
 @import "tailwindcss";
+
+/* Estratégia de tema escuro por classe (.dark via next-themes). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tokens de marca/apoio/estado — DESIGN.md (geram utilitários: bg-cyan, text-graphite, ...). */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --color-graphite: #334155;
+  --color-charcoal: #0f172a;
+  --color-cyan: #06b6d4;
+  --color-cyan-light: #22d3ee;
+  --color-cyan-text: #0e7490;
+  --color-slate: #475569;
+  --color-steel: #64748b;
+  --color-mist: #f1f5f9;
+
+  --color-state-idle: #64748b;
+  --color-state-thinking: #06b6d4;
+  --color-state-active: #22d3ee;
+  --color-state-waiting: #f59e0b;
+  --color-state-done: #22c55e;
+  --color-state-error: #ef4444;
+
+  --color-state-thinking-700: #0e7490;
+  --color-state-active-700: #0891b2;
+  --color-state-waiting-700: #b45309;
+  --color-state-done-700: #15803d;
+  --color-state-error-700: #b91c1c;
+
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+
+/* Variáveis semânticas — tema claro (default) e escuro (DESIGN.md). */
+:root {
+  --bg: #ffffff;
+  --surface: #f1f5f9;
+  --fg: #1e293b;
+  --fg-muted: #64748b;
+  --border: #475569;
+  --focus: #0e7490;
+}
+
+.dark {
+  --bg: #0b1220; /* nunca preto puro */
+  --surface: #0f172a;
+  --fg: #f1f5f9;
+  --fg-muted: #94a3b8;
+  --border: #94a3b8;
+  --focus: #22d3ee;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-border: var(--border);
+  --color-focus: var(--focus);
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
+
+/* Anel de foco visível (≥2px) — nunca ciano puro no claro (token semântico por tema). */
+:where(a, button, [role="button"], input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
