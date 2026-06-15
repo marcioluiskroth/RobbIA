@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { z } from 'zod'
 import { completeStructured, extractJson, parseStructured } from './normalize'
-import type { CompletionResult, StructuredRequest } from './types'
+import type { CompletionResult, LLMRequest, StructuredRequest } from './types'
 
 const Schema = z.object({ name: z.string(), count: z.number() })
 type Shape = z.infer<typeof Schema>
@@ -12,9 +12,14 @@ const okCompletion = (text: string): { ok: true; data: CompletionResult } => ({
 })
 
 describe('normalize', () => {
-  it('extractJson lida com cercas ```json e prosa ao redor', () => {
+  it('extractJson lida com cercas ```json e prosa ANTES e DEPOIS do valor', () => {
     expect(extractJson('```json\n{"a":1}\n```')).toBe('{"a":1}')
     expect(extractJson('aqui está: {"a":1}')).toBe('{"a":1}')
+    // prosa após o valor não pode quebrar o parse (span balanceado):
+    expect(extractJson('{"a":1} Espero ter ajudado!')).toBe('{"a":1}')
+    expect(extractJson('Claro: [1,2,3]. Pronto.')).toBe('[1,2,3]')
+    // chaves dentro de strings não confundem a contagem de profundidade:
+    expect(extractJson('{"msg":"a } b"} fim')).toBe('{"msg":"a } b"}')
     expect(extractJson('sem json aqui')).toBeNull()
   })
 
@@ -36,20 +41,26 @@ describe('normalize', () => {
     expect(res).toMatchObject({ ok: true, data: { name: 'x', count: 1 } })
   })
 
-  it('completeStructured: repair recupera na 2ª tentativa', async () => {
+  it('completeStructured: repair recupera na 2ª tentativa e REENVIA o erro no re-prompt', async () => {
     let n = 0
+    const seen: LLMRequest[] = []
     const req: StructuredRequest<Shape> = {
       model: 'm',
       messages: [],
       schema: Schema,
       repairAttempts: 2,
     }
-    const res = await completeStructured(() => {
+    const res = await completeStructured((r) => {
       n++
+      seen.push(r)
       return Promise.resolve(okCompletion(n === 1 ? '{"name":"x"}' : '{"name":"x","count":2}'))
     }, req)
     expect(res.ok).toBe(true)
     expect(n).toBe(2)
+    // A 2ª tentativa precisa realimentar o erro de validação anterior (AC2):
+    const repairTurn = seen[1]?.messages.at(-1)
+    expect(repairTurn?.role).toBe('user')
+    expect(repairTurn?.content).toContain('previous output was invalid')
   })
 
   it('completeStructured: esgota o repair → err', async () => {

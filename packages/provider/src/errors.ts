@@ -1,4 +1,5 @@
 import type { ResultError } from '@robbia/shared'
+import type { ProviderKind } from './types'
 
 const RETRIABLE_STATUS = new Set([408, 409, 425, 429])
 
@@ -18,7 +19,7 @@ interface MaybeApiError {
  * Mapeia um erro de SDK/HTTP para o `ResultError` discriminado de @robbia/shared,
  * distinguindo transitório (retry) de permanente (escala) — FR-17.
  */
-export function mapProviderError(error: unknown, providerKind: string): ResultError {
+export function mapProviderError(error: unknown, providerKind: ProviderKind): ResultError {
   const e: MaybeApiError = error && typeof error === 'object' ? (error as MaybeApiError) : {}
   const status = typeof e.status === 'number' ? e.status : undefined
   const isTimeout =

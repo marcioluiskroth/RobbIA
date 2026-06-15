@@ -1,12 +1,9 @@
-import { z } from 'zod'
+import { baseEnvSchema, makeLoadEnv } from '@robbia/shared'
 
-const EnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-})
-
-export type Env = z.infer<typeof EnvSchema>
+/** Schema de ambiente do app — estenda o base com vars próprias quando necessário. */
+export const envSchema = baseEnvSchema
 
 /** Valida o ambiente no boot (parse, don't validate). */
-export function loadEnv(source: Record<string, string | undefined> = process.env): Env {
-  return EnvSchema.parse(source)
-}
+export const loadEnv = makeLoadEnv(envSchema)
+
+export type Env = ReturnType<typeof loadEnv>

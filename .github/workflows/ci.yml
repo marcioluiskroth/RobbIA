@@ -23,3 +23,23 @@ jobs:
         run: bun run test
       - name: Build (turbo)
         run: bun run build
+
+  # Smoke do docker-compose: prova o AC#3 da Story 1.1 (postgres healthy + web responde em :3000).
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build e sobe o compose (postgres + web)
+        run: docker compose up -d --build
+      - name: Aguarda a web responder em :3000
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000 >/dev/null; then echo "web OK"; exit 0; fi
+            echo "tentativa $i: web ainda não respondeu, aguardando..."; sleep 5
+          done
+          echo "::error::web não respondeu em :3000"; docker compose logs; exit 1
+      - name: Postgres healthy
+        run: docker compose ps postgres | grep -q healthy || (docker compose logs postgres; exit 1)
+      - name: Derruba o compose
+        if: always()
+        run: docker compose down -v

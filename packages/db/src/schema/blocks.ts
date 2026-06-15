@@ -22,11 +22,14 @@ export const blocks = pgTable(
     modelConfigId: uuid('model_config_id').references(() => modelConfigs.id, {
       onDelete: 'set null',
     }),
-    config: jsonb('config').notNull().default({}),
+    config: jsonb('config').$type<Record<string, unknown>>().notNull().default({}),
     // IDs de Blocos dos quais este depende (fluxo de dados entre Blocos).
-    dependsOn: jsonb('depends_on').notNull().default([]),
+    dependsOn: jsonb('depends_on').$type<string[]>().notNull().default([]),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
   },
   (t) => [index('idx_blocks_harness_id').on(t.harnessId)],
 )

@@ -13,9 +13,12 @@ export const modelConfigs = pgTable(
       .notNull()
       .references(() => providers.id, { onDelete: 'cascade' }),
     model: text('model').notNull(),
-    params: jsonb('params').notNull().default({}),
+    params: jsonb('params').$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
   },
   (t) => [index('idx_model_configs_provider_id').on(t.providerId)],
 )

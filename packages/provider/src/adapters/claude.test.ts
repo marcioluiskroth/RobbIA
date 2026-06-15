@@ -26,6 +26,31 @@ describe('ClaudeProvider (cliente mockado)', () => {
     }
   })
 
+  it('mensagem role:system em messages[] é dobrada em `system` e não vira turno user', async () => {
+    let captured: { system?: string; messages: { role: string; content: string }[] } | undefined
+    const client = {
+      messages: {
+        create: (args: { system?: string; messages: { role: string; content: string }[] }) => {
+          captured = args
+          return Promise.resolve({
+            content: [{ type: 'text', text: 'ok' }],
+            usage: { input_tokens: 1, output_tokens: 1 },
+          })
+        },
+      },
+    } as unknown as Anthropic
+    const provider = new ClaudeProvider({}, client)
+    await provider.complete({
+      model: 'm',
+      messages: [
+        { role: 'system', content: 'seja conciso' },
+        { role: 'user', content: 'oi' },
+      ],
+    })
+    expect(captured?.system).toContain('seja conciso')
+    expect(captured?.messages).toEqual([{ role: 'user', content: 'oi' }])
+  })
+
   it('erro permanente do SDK (401) → Result err não-retriable, sem lançar', async () => {
     const client = {
       messages: {

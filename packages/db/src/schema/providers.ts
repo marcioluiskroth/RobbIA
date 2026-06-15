@@ -8,8 +8,11 @@ export const providers = pgTable('providers', {
     .$defaultFn(() => uuidv7()),
   kind: text('kind').notNull(),
   label: text('label').notNull(),
-  config: jsonb('config').notNull().default({}),
+  config: jsonb('config').$type<Record<string, unknown>>().notNull().default({}),
   enabled: boolean('enabled').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdateFn(() => new Date()),
 })

@@ -66,7 +66,8 @@ so that todas as histórias seguintes construam sobre uma fundação consistente
 - [x] **Task 5 — Verificação local (AC: 1,2,3)**
   - [x] `bun install` na raiz resolve todos os workspaces
   - [x] `biome ci`, `tsc --noEmit`, `bun test` (ao menos 1 teste smoke por package shared), `turbo build` passam
-  - [x] `docker compose config` valida postgres + web — *live `docker compose up` não executado: daemon Docker offline neste ambiente (ver Completion Notes)*
+  - [x] `docker compose config` valida postgres + web localmente — *live `docker compose up` não executado neste ambiente (daemon Docker offline).*
+  - [x] **AC#3 (cláusula "sobe localmente") provada em CI:** job `docker-smoke` no `ci.yml` roda `docker compose up -d --build`, aguarda a `web` responder em `:3000` (curl) e confirma `postgres` healthy — a verificação real do build/run do container deixa de depender de daemon local.
 
 ### Review Findings
 

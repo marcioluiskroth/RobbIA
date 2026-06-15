@@ -10,9 +10,6 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 const LEVEL_ORDER: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 }
 
-/** Chaves reservadas do registro — não podem ser sobrescritas por campos do chamador. */
-const RESERVED_KEYS = ['ts', 'level', 'service', 'correlationId', 'msg'] as const
-
 export interface LogFields {
   correlationId?: string
   [key: string]: unknown
@@ -177,5 +174,3 @@ export function createLogger(service: string, options: CreateLoggerOptions = {})
       createLogger(service, { ...options, bindings: { ...bindings, ...childBindings } }),
   }
 }
-
-export { RESERVED_KEYS }
