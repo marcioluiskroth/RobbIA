@@ -3,7 +3,7 @@ baseline_commit: 8631e69338d0b018708ed29c7f0c24a3b5b3558d
 ---
 # Story 1.5: Design system — tokens, temas claro/escuro e componentes de estado
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -159,3 +159,4 @@ claude-opus-4-8 (1M context) — BMad dev-story workflow
 |------|---------|
 | 2026-06-14 | Story 1.5 criada (ready-for-dev): design system (tokens DESIGN.md, temas claro/escuro via next-themes, MascotCore + StateBadge, taxonomia determinística dos 7 Tipos de Bloco). UI em apps/web. |
 | 2026-06-14 | Story 1.5 implementada: tokens Tailwind v4 + temas (next-themes), MascotCore/StateBadge, taxonomia dos 7 Tipos (ciano só Gatilho/Ação), vitrine /design. +5 testes (51 total). Lint/typecheck/test/build verdes. Verificação visual manual (headless). Status → review. |
+| 2026-06-15 | Code review (épico 1) resolvido p/ esta story: teste de `block-types` passa a fixar ícone/forma/cor exatos dos 7 Tipos + chaves == BLOCK_TYPES (era só truthy/tautológico); vitrine `/design` agora renderiza a paleta e aplica borda/forma por Tipo. Commit `5799ecd`. Lint/typecheck/test/build verdes. **Status → done.** |
