@@ -22,7 +22,7 @@ _Este documento é construído de forma colaborativa, passo a passo. As seções
 
 ### Visão Geral dos Requisitos
 
-**Requisitos Funcionais (21 FRs / 11 features):**
+**Requisitos Funcionais (29 FRs / 13 features) — Update v3 (RAG, Skills/MCP, memória híbrida elevados ao MVP):**
 - Geração NL→Harness pela IA Arquiteta (FR-1, FR-2) — núcleo/moat; exige LLM dedicado + parser/validador de schema de Harness.
 - Aprovação por etapa e seleção de Modelo por Bloco (FR-3, FR-4) — UI de revisão acoplada ao modelo de dados de Harness/Bloco.
 - Harness Runtime: execução sequencial com estado, erro e retry; Modo de Teste (FR-5, FR-6) — motor de orquestração com persistência de estado.
@@ -32,7 +32,9 @@ _Este documento é construído de forma colaborativa, passo a passo. As seções
 - CES — isolamento de credenciais do LLM (FR-11).
 - Deploy/operação 24/7 + Trust Engine (FR-12, FR-13).
 - Harness UI: chat + cards + fluxo visual + identidade de marca (FR-14, FR-20).
-- Memória mínima por conversa (FR-15).
+- Memória por conversa + **híbrida (dense+sparse) e perfis globais** (FR-15, FR-29).
+- **Conhecimento (RAG):** ingestão/indexação (`pgvector`), recuperação semântica no Bloco Contexto, embeddings via Provider (FR-23, FR-24, FR-25).
+- **Skills & Connectors:** catálogo built-in (`SKILL.md`+`TOOLS.json`) + camada **MCP** de 1 clique; IA Arquiteta ciente do catálogo (FR-22, FR-26, FR-27, FR-28).
 - Concorrência/resiliência: ordenação por conversa, failover de Provider, resiliência de Canal, confirmação robusta (FR-16–FR-19).
 
 **Requisitos Não-Funcionais (direcionadores de arquitetura):**
@@ -55,7 +57,7 @@ _Este documento é construído de forma colaborativa, passo a passo. As seções
 - Evolution API (WhatsApp não-oficial): risco de ToS/banimento → camada de Canal plugável para migração à Cloud API oficial.
 - RPA desktop exige ambiente Windows (host/VM/contêiner/nó dedicado), distinto do sandbox Docker Linux.
 - 5 Providers de LLM com saída não-fungível → adaptador valida/normaliza schema.
-- Spikes pendentes (do PRD §12): modelo padrão da IA Arquiteta; biblioteca(s) de RPA web e abordagem desktop Windows.
+- Spikes pendentes (do PRD §12): modelo padrão da IA Arquiteta; biblioteca(s) de RPA web e abordagem desktop Windows; **modelo de embedding + estratégia de chunking + busca híbrida (RAG/memória)**; **SDK/runtime MCP (isolamento das tools + mapeamento tool→Skill)**.
 
 ### Preocupações Transversais Identificadas
 - Isolamento de credenciais (CES) atravessa todos os Blocos que autenticam.
@@ -112,13 +114,16 @@ bun create next-app@latest apps/web   # Next.js 16, React 19, App Router, TS, Ta
 
 ### Análise de Prioridade
 **Críticas (bloqueiam implementação):** motor de execução do Harness; orquestração cross-ambiente do RPA; CES; modelo de dados do Harness; Provider Abstraction.
-**Importantes (moldam a arquitetura):** abordagem do RPA web e desktop; estratégia de WebSocket/observabilidade; validação de schema.
-**Adiadas (pós-MVP):** multi-tenancy/RLS; motor de memória híbrida (pgvector); marketplace.
+**Importantes (moldam a arquitetura):** abordagem do RPA web e desktop; estratégia de WebSocket/observabilidade; validação de schema; **pipeline de RAG (chunking/embedding/`pgvector`) e busca híbrida**; **runtime MCP (tool→Skill) e catálogo de Skills**.
+**Adiadas (pós-MVP):** multi-tenancy/RLS; marketplace público de Skills/harnesses; engine proativo.
 
 ### Arquitetura de Dados
-- **Modelo de domínio:** `Harness` → `Block[]` (tipado por Tipo de Bloco) com dependências; `Execution` + `ExecutionStep` (estado e I/O por Bloco, base de retry/replay e do Modo de Teste); `Conversation` + `Message` (memória mínima por conversa — FR-15, isolada por conversa); `Credential` (apenas referência; segredo vive no CES); `Provider`/`ModelConfig`.
+- **Modelo de domínio:** `Harness` → `Block[]` (tipado por Tipo de Bloco) com dependências; `Execution` + `ExecutionStep` (estado e I/O por Bloco, base de retry/replay e do Modo de Teste); `Conversation` + `Message` (memória por conversa — FR-15, isolada); `Credential` (apenas referência; segredo vive no CES); `Provider`/`ModelConfig`.
+- **Conhecimento/RAG (FR-23/24):** `KnowledgeBase` (por agente/Workspace) → `Document` → `Chunk` (`embedding vector`, via `pgvector`) com atribuição de fonte; índice de busca **híbrida** (vetorial + lexical).
+- **Memória híbrida/global (FR-29):** `MemoryProfile` (por cliente/usuário, entre conversas) + memória vetorial em `pgvector`; isolada por Workspace.
+- **Skills/MCP (FR-26/27):** `Skill` (catálogo built-in + tools MCP) com schema de tool validável; `Connector` (servidor MCP conectado; segredo via CES).
 - **Validação:** Zod v4 em todas as fronteiras — webhook de Canal, **saída estruturada do LLM** (normalização entre Providers, FR-9) e schema de proposta de Harness (FR-1).
-- **ORM/Migrations:** Drizzle + Drizzle Kit. pgvector adiado (entra com memória híbrida, Fase 4).
+- **ORM/Migrations:** Drizzle + Drizzle Kit. **`pgvector` no MVP** (RAG/Conhecimento FR-23/24 e memória híbrida FR-29); dimensão do vetor registrada por índice (troca de modelo de embedding sem corromper o store).
 
 ### Autenticação e Segurança
 - **Auth:** single-admin no MVP (sessão do arquiteto no Workspace).
@@ -144,6 +149,7 @@ bun create next-app@latest apps/web   # Next.js 16, React 19, App Router, TS, Ta
 
 ### Provider Abstraction (multi-LLM)
 - Interface única; adaptadores por Provider (Claude, GPT, Gemini, Ollama, OpenRouter). Diretos p/ frontier (custo/latência), OpenRouter p/ amplitude. **Normalização de schema** (Zod) valida/recupera saída antes do Runtime (FR-9). Modelo da IA Arquiteta = spike de benchmark.
+- **Embeddings (FR-25):** a interface de Provider ganha `embed()` (além de `complete`/`completeStructured`); modelo de embedding configurável, com caminho 100% local (Ollama). Usado por RAG (FR-23/24) e memória híbrida (FR-29).
 
 ### Frontend (Harness UI)
 - Next.js 16 (App Router, Server Components, streaming) + React 19. **TanStack Query v5** para estado de servidor; estado do builder (chat+cards) local + WebSocket para execução ao vivo. **ReactFlow** para a vista de fluxo (complementar). Tailwind + Shadcn/ui; temas claro/escuro e estados do mascote (FR-20, brand book).
@@ -161,6 +167,9 @@ bun create next-app@latest apps/web   # Next.js 16, React 19, App Router, TS, Ta
 7. RPA web (Stagehand/Playwright MCP em Docker).
 8. RPA desktop (worker Windows FlaUI + fallback visão).
 9. Harness UI (chat+cards+ReactFlow) + memória por conversa + resiliência (FR-16–19).
+10. **Skills & Connectors:** catálogo built-in (`packages/skills`) + Ação HTTP (FR-22/26); camada MCP (`packages/mcp-adapters`, FR-27) + consciência de Skills na IA Arquiteta (FR-28).
+11. **Conhecimento (RAG):** `embed()` no Provider (FR-25) → `packages/knowledge` (ingestão/chunking/index `pgvector`, FR-23) → recuperação no Bloco Contexto (FR-24).
+12. **Memória híbrida/global:** busca híbrida (dense+sparse) + perfis persistentes (FR-29) em `packages/memory`.
 
 ### Dependências Cruzadas
 - pg-boss é dependência central (Runtime + RPA + Gateway) — definir contratos de job cedo.
@@ -277,8 +286,12 @@ robbia/
 │   │   └── src/{client.ts,fallback-vision.ts}
 │   ├── memory/                   # @robbia/memory — memória por conversa (FR-15)
 │   │   └── src/{store.ts,retrieve.ts}
-│   ├── skills/                   # @robbia/skills — catálogo built-in (SKILL.md + TOOLS.json)
-│   │   └── builtin/
+│   ├── skills/                   # @robbia/skills — catálogo de Skills (loader + invocação; SKILL.md + TOOLS.json)
+│   │   └── src/{catalog.ts,invoke.ts,validate.ts}  +  builtin/
+│   ├── knowledge/                # @robbia/knowledge — RAG: ingestão/chunking/embeddings/retrieval (pgvector)
+│   │   └── src/{ingest.ts,chunk.ts,index.ts,retrieve.ts}
+│   ├── mcp-adapters/             # @robbia/mcp-adapters — cliente MCP + ponte tool→Skill (Connectors)
+│   │   └── src/{client.ts,bridge.ts}
 │   └── channels/                 # @robbia/channels — Canais plugáveis
 │       └── src/{channel.ts,evolution.ts,telegram.ts}
 └── workers/
@@ -296,7 +309,7 @@ robbia/
 
 **Fronteira de credenciais (CES):** `ces` é o único que descriptografa segredos; expõe apenas `inject(ref, ctx)` ao worker de execução. `provider`, `architect`, `runtime` e LLMs **nunca** recebem segredo. `db.credentials` guarda só referência.
 
-**Fronteira de dados:** `packages/db` é o único acesso ao Postgres (schema + client). Outros packages recebem dados já tipados/validados (Zod). pgvector adiado.
+**Fronteira de dados:** `packages/db` é o único acesso ao Postgres (schema + client). Outros packages recebem dados já tipados/validados (Zod). **`pgvector` no MVP** (RAG/Conhecimento e memória híbrida — FR-23/24/29); `packages/knowledge` e `packages/memory` acessam vetores via `packages/db`.
 
 **Fronteira de ambiente (RPA):** `rpa-web-worker` (Linux/Docker) e `rpa-desktop-worker` (Windows) compartilham o contrato `rpa-core` mas vivem em ambientes separados; o `runtime` é agnóstico de qual executa.
 
@@ -311,7 +324,12 @@ robbia/
 - **FR-11 (CES):** `apps/ces`.
 - **FR-12/FR-13/FR-19 (deploy/operação/Trust):** `apps/runtime` (Trust Engine) + `apps/web/(operations)` + `docker-compose*.yml`.
 - **FR-14/FR-20 (UI/marca):** `apps/web` (components/ui, flow, builder).
-- **FR-15 (memória):** `packages/memory`.
+- **FR-15/FR-29 (memória por conversa + híbrida/global):** `packages/memory` (+ `pgvector` via `packages/db`).
+- **FR-22/FR-26 (Ação HTTP + catálogo de Skills):** `packages/skills` + `apps/runtime` (executor de Ação).
+- **FR-27 (Connectors/MCP):** `packages/mcp-adapters` + `apps/ces` (credenciais).
+- **FR-28 (consciência de Skills na IA Arquiteta):** `packages/architect` (system-prompt recebe o catálogo).
+- **FR-23/FR-24 (RAG: ingestão + recuperação):** `packages/knowledge` + `packages/db` (`pgvector`); Bloco Contexto em `apps/runtime`.
+- **FR-25 (embeddings):** `packages/provider` (`embed()`).
 - **FR-16–18 (concorrência/resiliência):** `apps/runtime` (lock por conversa, failover) + `apps/gateway` (retenção/replay de Canal).
 
 ### Pontos de Integração e Fluxo de Dados

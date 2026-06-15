@@ -8,7 +8,7 @@ updated: 2026-06-14
 # PRD: RobbIA — Conversational Agent Builder (MVP)
 *Título de trabalho — confirmar.*
 
-> **Status:** final (v2) — v1 passou por reconciliação de insumos + revisão adversarial / edge-case / rubrica. **v2 (Update 2026-06-14):** fechadas as questões em aberto do §12 (modelo da IA Arquiteta e lib de RPA viram spikes de arquitetura; estratégia de RPA = integrar OSS; política de retry/escalonamento e roteamento de Provider definidos) e **ampliado o escopo de RPA para cobrir também aplicativos desktop Windows nativos** (FR-21), com as implicações de sandbox/deploy registradas. Não é imutável: reabra quando quiser.
+> **Status:** final (v2) — v1 passou por reconciliação de insumos + revisão adversarial / edge-case / rubrica. **v2 (Update 2026-06-14):** fechadas as questões em aberto do §12 (modelo da IA Arquiteta e lib de RPA viram spikes de arquitetura; estratégia de RPA = integrar OSS; política de retry/escalonamento e roteamento de Provider definidos) e **ampliado o escopo de RPA para cobrir também aplicativos desktop Windows nativos** (FR-21), com as implicações de sandbox/deploy registradas. **v3 (Update 2026-06-14):** por decisão do dono (prioridade = solução completa), **RAG/Conhecimento, Skills built-in, Connectors MCP de 1 clique e memória híbrida/global foram elevados de Fase 3/4 ao MVP** — novos FR-23..FR-29 e reconciliação do FR-22; deps (`pgvector`, MCP) e spikes (embedding/chunking, runtime MCP) atualizados. Não é imutável: reabra quando quiser.
 
 ## 0. Propósito do Documento
 
@@ -214,14 +214,20 @@ A UI segue a identidade da marca e comunica o estado do agente visualmente. Deta
 - A UI aplica a paleta Grafite + Ciano (hierarquia 60/30/10) e a tipografia Inter (interface) + JetBrains Mono (código/configs), em **temas claro e escuro** (ambos no MVP).
 - O indicador do agente (núcleo do mascote) reflete o estado por cor conforme o brand book: Ocioso, Pensando, Ativo, Aguardando, Concluído, Erro.
 
-### 4.10 Memória por conversa
-**Descrição:** o agente mantém **memória mínima por conversa** — histórico da conversa/cliente disponível aos Blocos (ex.: Contexto) dentro de uma mesma conversa em produção. Decisão do dono: incluir no MVP como feature explícita. **Não** é o motor de memória híbrida (dense+sparse) nem perfis persistentes globais — esses continuam na Fase 4. Realiza UJ-1. `[ASSUMPTION: escopo = persistir e recuperar o histórico por conversa/cliente; sem busca vetorial nem perfil global no MVP.]`
+### 4.10 Memória — por conversa e híbrida/global
+**Descrição:** o agente mantém memória **por conversa** (histórico disponível aos Blocos de Contexto numa mesma conversa) e também **memória híbrida (dense+sparse) com perfis persistentes globais** entre conversas/cliente. **Decisão do dono (Update v3, 2026-06-14): elevar a memória híbrida/global a primeira-classe no MVP** — prioridade de qualidade/solução completa. Realiza UJ-1.
 
 #### FR-15: Persistir e recuperar memória por conversa
 **Consequences (testable):**
 - Mensagens de uma conversa ficam persistidas e podem ser recuperadas por um Bloco de Contexto na mesma conversa.
-- A memória é isolada por conversa/cliente (uma conversa não enxerga o histórico de outra).
-- Não há, no MVP, perfil de usuário persistente entre conversas distintas nem busca semântica.
+- A memória é isolada por conversa/cliente (uma conversa não enxerga o histórico de outra), salvo recuperação explícita via perfil global (FR-29).
+
+#### FR-29: Memória híbrida (dense+sparse) e perfis persistentes globais
+A memória do agente vai além da conversa: busca híbrida (densa/vetorial + esparsa/lexical) e perfil persistente por usuário/cliente entre conversas. Realiza UJ-1.
+**Consequences (testable):**
+- Um Bloco de Contexto pode recuperar memória **entre conversas** do mesmo cliente/usuário (perfil persistente), isolado por Workspace.
+- A recuperação combina busca **vetorial (dense)** e **lexical (sparse)** e devolve os trechos mais relevantes (ranqueados).
+- A memória vetorial usa `pgvector`; embeddings via Provider (FR-25), com caminho 100% local (Ollama) disponível.
 
 ### 4.11 Concorrência e Resiliência *(robustez 24/7)*
 **Descrição:** um agente que roda 24/7 precisa sobreviver a mensagens simultâneas, Providers fora do ar, Canais que caem/banem e confirmações que não chegam — sem perder dados nem agir errado. Cobre lacunas levantadas na revisão adversarial e de edge cases. Realiza UJ-1, UJ-2.
@@ -246,11 +252,58 @@ A UI segue a identidade da marca e comunica o estado do agente visualmente. Deta
 - Se o guardião não confirmar uma Ação Irreversível, há timeout/fila explícita (**padrão: 24h, configurável**) — esgotado o prazo, a ação é **cancelada/enfileirada para revisão**, nunca executada às cegas nem pendente para sempre.
 - O canal de confirmação não depende unicamente de um Canal que pode estar fora (ex.: oferece confirmação via painel/log), evitando dependência circular com FR-18.
 
+### 4.12 Conhecimento (RAG) — base de conhecimento por agente
+**Descrição:** cada agente pode ter uma **Base de Conhecimento** própria — documentos ingeridos, indexados e recuperáveis semanticamente por um Bloco de Contexto. Permite responder "a partir dos nossos documentos" (FAQ, manuais, políticas) sem treinar modelo. **Decisão do dono (Update v3): RAG é primeira-classe no MVP.** Realiza UJ-1.
+
+#### FR-23: Ingerir e indexar documentos numa Base de Conhecimento
+**Consequences (testable):**
+- O arquiteto adiciona documentos (PDF, Markdown, TXT, URL) a uma Base de Conhecimento do agente; são divididos em trechos (chunking), embeddados (FR-25) e indexados em `pgvector`.
+- A ingestão é idempotente: reprocessar uma fonte não duplica trechos.
+- Documentos e trechos ficam isolados por Workspace/agente (uma Base não vaza para outra).
+
+#### FR-24: Recuperação semântica no Bloco de Contexto
+**Consequences (testable):**
+- Um Bloco de Contexto pode recuperar os **top-k** trechos mais relevantes de uma Base de Conhecimento para uma consulta, além da memória de conversa (FR-15).
+- A recuperação retorna trechos com **atribuição de fonte** (documento + posição) para citar a origem.
+- Trechos recuperados entram no contexto do Bloco seguinte sem expor credenciais.
+
+#### FR-25: Embeddings via Provider Abstraction
+**Consequences (testable):**
+- A geração de embeddings passa pela interface única de Provider (FR-9), selecionável por configuração, com **caminho 100% local** (Ollama) — privacidade/LGPD.
+- O modelo de embedding é configurável; a dimensão do vetor é registrada por índice, de modo que trocar de modelo não corrompe o armazenamento.
+
+### 4.13 Skills & Connectors — capacidades plugáveis (built-in + MCP)
+**Descrição:** as ações do agente vêm de um **catálogo de Skills** — capacidades declaradas (`SKILL.md` + `TOOLS.json`) invocadas por Blocos de Ação — e de **Connectors** que, com 1 clique, conectam **servidores MCP** cujas tools viram Skills disponíveis. **Decisão do dono (Update v3): Skills built-in + camada MCP/Connectors são primeira-classe no MVP** (eram Fase 3). Realiza UJ-1, UJ-2.
+
+#### FR-22: Bloco de Ação HTTP/API genérico
+Um Bloco de Ação executa uma chamada HTTP/API genérica a um sistema com API — a primeira Skill built-in do catálogo.
+**Consequences (testable):**
+- Configura método (GET/POST/PUT/PATCH/DELETE), URL, headers, query e corpo; autenticação (API key/bearer/basic) via CES; nada de credencial no LLM/log.
+- A resposta (status+corpo) é normalizada e fica disponível aos Blocos seguintes; falhas seguem a política de retry (FR-5); Ações Irreversíveis respeitam o Trust Engine (FR-13/FR-19).
+- A IA Arquiteta propõe Ação HTTP — em vez de RPA — quando o alvo expõe API.
+
+#### FR-26: Catálogo de Skills built-in
+**Consequences (testable):**
+- Skills são declaradas por `SKILL.md` (descrição/uso) + `TOOLS.json` (schema das ferramentas) e carregadas num catálogo do Workspace.
+- Um Bloco de Ação invoca uma Skill por nome; os argumentos são validados contra o schema da tool antes de executar (rejeita inválido).
+- O catálogo é extensível sem alterar o Runtime (adicionar uma Skill é declarar arquivos, não recompilar o motor).
+
+#### FR-27: Connectors — integração MCP de 1 clique
+**Consequences (testable):**
+- O arquiteto conecta um **servidor MCP** (configuração + credencial via CES); as tools expostas passam a aparecer como Skills disponíveis no catálogo.
+- Tools MCP são invocáveis por Blocos de Ação como qualquer Skill (mesmo contrato de validação/erro/retry).
+- Desconectar um Connector remove suas tools do catálogo sem quebrar Harnesses (Blocos que as usavam marcam capacidade ausente).
+
+#### FR-28: Consciência de Skills/capacidades na IA Arquiteta
+**Consequences (testable):**
+- A IA Arquiteta recebe o catálogo de Skills disponíveis (built-in + MCP conectado) e propõe Blocos de Ação **apenas** para Skills existentes.
+- Quando o pedido exige uma capacidade ausente (ex.: responder de documentos sem Base de Conhecimento, ou uma integração não conectada), a IA Arquiteta **pede esclarecimento / sinaliza a lacuna** em vez de inventar (estende FR-1).
+
 ## 5. Não-Goals (Explícito)
 - **Não** é painel multi-cliente nem white-label no MVP (single-workspace). `[NON-GOAL for MVP]`
 - **Não** há marketplace de harnesses no MVP; se vier, será **curado/certificado**, nunca aberto sem certificação (risco de supply-chain). `[NON-GOAL for MVP]`
-- **Não** há motor de memória híbrida (dense+sparse), perfis persistentes globais nem engine proativo (Fase 4). O MVP **tem** memória mínima por conversa (§4.10, FR-15), mas nada além disso.
-- **Não** há catálogo amplo de Skills/MCP da comunidade (Fase 3); o MVP traz os Canais, RPA e Blocos básicos.
+- **Não** há **engine proativo** (agente que age sem gatilho) no MVP — Fase 4+. *(A memória híbrida/global e o RAG, antes adiados, foram elevados ao MVP — ver §4.10/§4.12.)*
+- **Não** há **marketplace público** de Skills/MCP da comunidade (agentskills.io) no MVP — Fase 3. *(O MVP tem catálogo de Skills built-in + Connectors MCP de 1 clique — §4.13.)*
 - **Não** é SaaS gerenciado; o MVP é self-hosted via Docker Compose.
 - **Não** usa WhatsApp Cloud API oficial no MVP (escolha por Evolution API — ver §10).
 
@@ -266,15 +319,17 @@ A UI segue a identidade da marca e comunica o estado do agente visualmente. Deta
 - CES — isolamento de credenciais (FR-11).
 - Deploy/operação na VPS + Trust Engine (FR-12, FR-13).
 - Harness UI conversacional com cards + fluxo visual (FR-14).
-- **Memória mínima por conversa** (FR-15).
+- **Memória por conversa + híbrida/global** (dense+sparse, perfis persistentes entre conversas) — FR-15, FR-29.
+- **Conhecimento (RAG):** Base de Conhecimento por agente — ingestão/embeddings/`pgvector` + recuperação semântica no Bloco de Contexto (FR-23, FR-24, FR-25).
+- **Skills & Connectors:** catálogo de Skills built-in (incl. Ação HTTP, FR-22) + Connectors MCP de 1 clique; IA Arquiteta ciente do catálogo (FR-26, FR-27, FR-28).
 - **Concorrência e resiliência 24/7**: ordenação por conversa, failover de Provider, resiliência de Canal, confirmação robusta (FR-16 a FR-19).
 - **Identidade visual** (brand book) + estados expressivos do mascote + temas claro/escuro (FR-20).
 
 ### 6.2 Fora de escopo do MVP
 - Painel multi-cliente / white-label — *núcleo do posicionamento, mas exige tenancy; v2.*
 - Marketplace de harnesses (fork/remix/avaliação) — *vetor de supply-chain; só curado/certificado, pós-MVP.*
-- Motor de memória híbrida (dense+sparse) + perfis persistentes globais + engine proativo — *Fase 4.* (O MVP **tem** memória mínima por conversa — §4.10/FR-15.)
-- Catálogo de Skills/MCP da comunidade + agentskills.io — *Fase 3.*
+- Engine **proativo** (agente que age sem gatilho) — *Fase 4+.* (Memória híbrida/global e RAG estão **no MVP** — §4.10/§4.12.)
+- **Marketplace público** de Skills/MCP da comunidade + agentskills.io — *Fase 3.* (Skills built-in + Connectors MCP de 1 clique estão **no MVP** — §4.13.)
 - DeepSeek como Provider direto dedicado — *acessível via OpenRouter no MVP; sem adaptador próprio.*
 - Multi-agente (um Harness orquestra outros), interface mobile, certificação/Academy — *Fase 5+.*
 - WhatsApp Cloud API oficial — *trocado por Evolution API no MVP.*
@@ -295,7 +350,7 @@ A UI segue a identidade da marca e comunica o estado do agente visualmente. Deta
 
 ## 8. NFRs Transversais
 - **Segurança (P0):** credenciais nunca chegam ao LLM (CES); RPA **web** em sandbox Docker isolado e efêmero, e RPA **desktop** em ambiente Windows isolado igualmente restrito/efêmero; ações irreversíveis sob confirmação; log auditável de cada execução/decisão.
-- **Privacidade:** dados ficam na VPS do usuário; sem telemetria para servidores externos. `[ASSUMPTION: LGPD aplicável; ao usar Providers frontier em nuvem, dados de prompt saem para o Provider — documentar e permitir caminho 100% local via Ollama.]`
+- **Privacidade:** dados ficam na VPS do usuário; sem telemetria para servidores externos. Documentos da Base de Conhecimento e embeddings ficam na VPS (`pgvector`); o **caminho de embedding 100% local (Ollama)** evita enviar conteúdo a Providers em nuvem (FR-25). `[ASSUMPTION: LGPD aplicável; ao usar Providers frontier em nuvem, dados de prompt saem para o Provider — documentar e permitir caminho 100% local via Ollama.]`
 - **Confiabilidade:** agente roda 24/7; falhas tratadas com retry e escalonamento; sem avanço silencioso após erro (ver §4.11).
 - **Concorrência:** execuções serializadas por conversa, conversas distintas em paralelo (FR-16).
 - **Observabilidade:** logs em tempo real por execução e por Bloco; trilha de decisão auditável. `[ASSUMPTION: "tempo real" = streaming via WebSocket, latência percebida < ~2s.]`
@@ -319,7 +374,9 @@ A demanda pela persona-alvo é forte e mal servida: levantamentos de mercado apo
 - **Telegram:** Bot API.
 - **RPA web:** navegador Playwright + motor OSS resiliente a DOM (Stagehand/Skyvern — a definir em spike).
 - **RPA desktop Windows:** motor de automação de UI Windows (visão/computer-use ou UI Automation — a definir em spike) + **ambiente de execução Windows** (host/VM/contêiner).
-- **Infra:** Docker/Docker Compose, PostgreSQL (+ pgvector quando memória entrar). Detalhes de stack no [addendum.md](addendum.md) e nos [docs](../../../../docs/product-vision-architecture.md).
+- **Conhecimento (RAG) / Memória híbrida:** `pgvector` (no MVP); modelo de embedding configurável (caminho local via Ollama) — a definir em spike.
+- **Skills/Connectors:** SDK/cliente **MCP** (Model Context Protocol) para conectar servidores MCP; catálogo built-in (`SKILL.md` + `TOOLS.json`).
+- **Infra:** Docker/Docker Compose, PostgreSQL **+ pgvector** (RAG e memória híbrida no MVP). Detalhes de stack no [addendum.md](addendum.md) e nos [docs](../../../../docs/product-vision-architecture.md).
 
 ## 12. Questões em Aberto e Spikes de Arquitetura
 *(Abertas por qualidade da solução — tempo não é critério; ver guardrail de priorização no §0/decision log.)*
@@ -334,6 +391,8 @@ A demanda pela persona-alvo é forte e mal servida: levantamentos de mercado apo
 **Spikes transferidos para a Arquitetura** (decisão técnica, não de produto):
 1. **Modelo padrão da IA Arquiteta** — benchmark de qualidade de decomposição (ex.: Claude Opus vs. Sonnet vs. outros) para fixar o default configurável (FR-1).
 2. **Biblioteca(s) de RPA** — escolha do motor OSS para web (Stagehand/Skyvern + Playwright MCP) e da abordagem desktop Windows (visão/computer-use vs. UI Automation) + formato do ambiente Windows isolado (FR-7, FR-21).
+3. **RAG/Conhecimento + memória híbrida** — modelo de embedding (dimensão/custo/local), estratégia de chunking e parâmetros da busca híbrida (dense+sparse) sobre `pgvector` (FR-23/24/25/29).
+4. **Runtime MCP** — SDK/cliente MCP, isolamento de execução das tools MCP e o mapeamento tool→Skill (FR-27).
 
 **A validar (não-bloqueador):**
 - Estatísticas de mercado do §9 — confirmar em fonte primária antes de uso público.
@@ -347,7 +406,7 @@ A demanda pela persona-alvo é forte e mal servida: levantamentos de mercado apo
 - §4.6 / §10 — Evolution API "Evolution Go" self-hosted; risco de ToS/banimento assumido (decidido).
 - §4.7/§4.4 — RPA: redaction de credenciais antes do screenshot ir ao LLM (FR-8); 2FA/captcha tratados por handoff humano, não resolução automática (FR-7).
 - §4.9 — Chat+cards é a interação primária; vista de fluxo (ReactFlow) é complementar (não editor nó-a-nó).
-- §4.10 — Memória mínima por conversa no MVP; sem busca vetorial nem perfil global (Fase 4).
+- §4.10/§4.12/§4.13 — **Update v3 (2026-06-14):** memória **híbrida/global**, **RAG (pgvector)** e **Skills/Connectors (MCP)** elevados de Fase 3/4 ao **MVP** (decisão do dono por solução completa); embedding model/chunking/runtime MCP = spikes (§12).
 - §7 — Alvos de SM-1..SM-4 são **provisórios** (SM-1: ≤20% dos Blocos editados em ≥60% dos Harnesses; SM-2 <30 min; SM-3 ≥95%), a recalibrar no piloto.
 - §8 — LGPD aplicável; dados saem ao Provider frontier em nuvem; caminho 100% local via Ollama. "Tempo real" ≈ streaming WebSocket <~2s. Acessibilidade alvo WCAG 2.1 AA.
 - §9 — Estatísticas de mercado precisam de validação em fonte primária.

@@ -41,6 +41,14 @@ FR-20: A UI aplica a identidade da marca: paleta Grafite + Ciano (hierarquia 60/
 FR-21: O Bloco RPA executa ação em aplicativo desktop Windows nativo (janelas de `.exe`, ex.: SISCOM, Kmov) via RPA isolado num ambiente Windows dedicado, separado do sandbox Docker Linux: localizar janela/elemento, clicar, digitar, navegar telas, ler valores e capturar screenshot para verificação (FR-8). Autentica via CES; aplica a mesma política de retry/escalonamento e de handoff em desafio interativo; não completa Ação Irreversível em falha/ambiguidade.
 FR-22: O Bloco de Ação pode executar uma chamada HTTP/API genérica a um sistema **com** API, disponível como skill built-in no catálogo (`packages/skills`). Configura método (GET/POST/PUT/PATCH/DELETE), URL, headers, query e corpo; autenticação (API key / bearer / basic) resolvida via CES quando necessária, sem credencial no LLM/log. A resposta (status + corpo) é validada/normalizada e fica disponível aos Blocos seguintes; falhas seguem a política de retry (FR-5) distinguindo transitório de permanente; quando a chamada for uma Ação Irreversível (ex.: POST que cria/deleta/transaciona), respeita o Trust Engine (FR-13/FR-19). A IA Arquiteta propõe um Bloco de Ação HTTP — em vez de RPA — quando o sistema-alvo expõe API.
 
+FR-23: Ingestão de documentos (PDF, Markdown, TXT, URL) numa Base de Conhecimento por agente — chunking + embeddings (FR-25) + indexação em `pgvector`; idempotente (reprocessar não duplica); isolada por Workspace/agente.
+FR-24: O Bloco de Contexto recupera os top-k trechos mais relevantes de uma Base de Conhecimento (com atribuição de fonte: documento + posição), além da memória de conversa (FR-15); trechos entram no contexto sem expor credenciais.
+FR-25: Geração de embeddings via Provider Abstraction (FR-9), com modelo configurável e caminho 100% local (Ollama); a dimensão do vetor é registrada por índice (troca de modelo não corrompe o store). Usado por RAG (FR-23/24) e memória híbrida (FR-29).
+FR-26: Catálogo de Skills built-in (`SKILL.md` + `TOOLS.json`) carregado por Workspace; um Bloco de Ação invoca uma Skill por nome, com os argumentos validados contra o schema da tool antes de executar; o catálogo é extensível sem recompilar o Runtime.
+FR-27: Connectors — o arquiteto conecta um servidor MCP (config + credencial via CES) e as tools expostas viram Skills disponíveis, invocáveis por Blocos de Ação como qualquer Skill; desconectar remove as tools do catálogo sem quebrar Harnesses (Blocos que as usavam marcam capacidade ausente).
+FR-28: A IA Arquiteta recebe o catálogo de Skills disponíveis (built-in + MCP conectado) e propõe Blocos de Ação apenas para Skills existentes; quando o pedido exige capacidade ausente (ex.: responder de documentos sem Base de Conhecimento, ou integração não conectada), pede esclarecimento / sinaliza a lacuna em vez de inventar (estende FR-1).
+FR-29: Memória híbrida (dense+sparse) e perfil persistente global entre conversas/cliente — o Bloco de Contexto pode recuperar memória entre conversas do mesmo cliente/usuário (perfil), isolada por Workspace; a recuperação combina busca vetorial (`pgvector`) e lexical e devolve trechos ranqueados.
+
 ### NonFunctional Requirements
 
 NFR-1: **Segurança (P0)** — credenciais nunca chegam ao LLM (CES); RPA web em sandbox Docker isolado e efêmero; RPA desktop em ambiente Windows isolado igualmente restrito/efêmero; Ações Irreversíveis sob confirmação; log auditável de cada execução/decisão.
@@ -118,7 +126,14 @@ FR-18: Epic 4 — Resiliência de Canal (fila/replay)
 FR-19: Epic 3 — Confirmação robusta de Ação Irreversível (24h/painel)
 FR-20: Epic 1 — Identidade visual + estados expressivos
 FR-21: Epic 5 — RPA desktop Windows nativo
-FR-22: Epic 4 — Bloco de Ação HTTP/API genérico (sistemas com API)
+FR-22: Epic 4 — Bloco de Ação HTTP/API genérico (1ª Skill built-in)
+FR-23: Epic 6 — Ingestão/indexação de Conhecimento (RAG, pgvector)
+FR-24: Epic 6 — Recuperação semântica no Bloco de Contexto
+FR-25: Epic 6 — Embeddings via Provider Abstraction
+FR-26: Epic 7 — Catálogo de Skills built-in
+FR-27: Epic 7 — Connectors (MCP de 1 clique)
+FR-28: Epic 7 — IA Arquiteta ciente de Skills/capacidades
+FR-29: Epic 6 — Memória híbrida (dense+sparse) + perfis globais
 
 ## Epic List
 
@@ -141,6 +156,14 @@ O arquiteto conecta Evolution (WhatsApp) e Telegram; o agente recebe e responde 
 ### Epic 5: RPA — Automação de Sistemas sem API (web + desktop Windows)
 O agente automatiza sistemas sem API — web (Playwright/Docker) e desktop Windows nativo (FlaUI, ex.: SISCOM/Kmov) — com verificação visual por LLM e handoff em desafio interativo — realizando UJ-2 ponta a ponta.
 **FRs covered:** FR-7, FR-8, FR-21
+
+### Epic 6: Conhecimento (RAG) & Memória avançada
+O agente responde "a partir dos nossos documentos": o arquiteto cria uma Base de Conhecimento por agente (ingestão → embeddings → pgvector), o Bloco de Contexto recupera trechos relevantes com atribuição de fonte, e a memória vai além da conversa (híbrida dense+sparse + perfis persistentes globais). *(Update v3 — elevado ao MVP.)*
+**FRs covered:** FR-23, FR-24, FR-25, FR-29
+
+### Epic 7: Skills & Connectors (MCP)
+As ações do agente viram um catálogo de Skills plugáveis: catálogo built-in (SKILL.md + TOOLS.json, generalizando a Ação HTTP da Story 4.5) + Connectors que conectam servidores MCP de 1 clique (tools externas viram Skills), com a IA Arquiteta ciente do catálogo ao planejar. *(Update v3 — elevado ao MVP.)*
+**FRs covered:** FR-26, FR-27, FR-28
 
 ## Epic 1: Fundação & Geração do Harness pela IA Arquiteta
 
@@ -723,3 +746,171 @@ So that eu entenda o que o agente automatiza e confie no resultado.
 **Given** um desafio interativo (2FA/captcha)
 **When** bloqueia a automação
 **Then** o Bloco pausa e sinaliza **handoff humano** explícito na UI, em vez de falhar silenciosamente (UX-DR18, FR-7/FR-21).
+
+## Epic 6: Conhecimento (RAG) & Memória avançada
+
+O agente responde a partir de documentos próprios e lembra entre conversas: Base de Conhecimento por agente (ingestão → embeddings → `pgvector`), recuperação semântica no Bloco de Contexto com atribuição de fonte, e memória híbrida (dense+sparse) com perfis persistentes globais. *(Update v3 — elevado ao MVP.)*
+
+**FRs:** FR-23, FR-24, FR-25, FR-29 · **Spikes:** modelo de embedding + chunking + busca híbrida. **Depende de:** Provider (Epic 1), Runtime/Contexto (Epic 2), `pgvector` (extensão Postgres).
+
+### Story 6.1: Embeddings via Provider Abstraction (`embed()`)
+
+As a desenvolvedor,
+I want gerar embeddings por uma interface única de Provider,
+So that RAG e memória híbrida tenham vetores sem lock-in e com caminho local.
+
+**Acceptance Criteria:**
+
+**Given** a interface `LLMProvider` (`@robbia/provider`)
+**When** adiciono a capacidade de embeddings
+**Then** existe `embed(texts, model)` que retorna vetores via adaptador, com ao menos um caminho 100% local (Ollama) (FR-25).
+
+**Given** um modelo de embedding configurável
+**When** gero embeddings
+**Then** a dimensão do vetor é exposta/registrada, para o índice `pgvector` ser criado coerente; trocar de modelo não corrompe dados existentes.
+
+**Given** uma falha transitória do Provider
+**When** ela ocorre
+**Then** aplica a política de retry central (reusa `withRetry`), distinguindo transitório de permanente.
+
+### Story 6.2: Schema de Conhecimento e Memória (pgvector)
+
+As a desenvolvedor,
+I want as tabelas de Conhecimento e Memória persistidas com suporte vetorial,
+So that ingestão, recuperação e perfis tenham base durável.
+
+**Acceptance Criteria:**
+
+**Given** o `@robbia/db` e a extensão `pgvector` habilitada
+**When** defino o schema
+**Then** existem `knowledge_bases`, `documents`, `chunks` (com coluna `embedding vector` + texto + atribuição de fonte) e `memory_profiles` (perfil por cliente/usuário) — `snake_case`, UUID v7, `timestamptz`, isolados por Workspace.
+
+**Given** o índice vetorial
+**When** crio a migration
+**Then** há índice de similaridade (`ivfflat`/`hnsw`) na coluna `embedding`, com a dimensão do modelo de embedding configurada.
+
+### Story 6.3: Ingestão de documentos (chunking + indexação)
+
+As a arquiteto,
+I want adicionar documentos à Base de Conhecimento de um agente,
+So that ele possa responder a partir deles.
+
+**Acceptance Criteria:**
+
+**Given** o `@robbia/knowledge`
+**When** adiciono um documento (PDF/Markdown/TXT/URL)
+**Then** ele é extraído, dividido em trechos (chunking), embeddado (Story 6.1) e indexado em `pgvector`, com atribuição de fonte (documento + posição) (FR-23).
+
+**Given** a mesma fonte reprocessada
+**When** rodo a ingestão de novo
+**Then** é idempotente — não duplica trechos.
+
+**Given** dois agentes/Workspaces distintos
+**When** consulto
+**Then** uma Base não enxerga documentos/trechos da outra (isolamento).
+
+### Story 6.4: Recuperação semântica no Bloco de Contexto
+
+As a arquiteto,
+I want que o Bloco de Contexto recupere trechos relevantes da Base de Conhecimento,
+So that o agente responda fundamentado e cite a origem.
+
+**Acceptance Criteria:**
+
+**Given** um Bloco de Contexto com fonte de conhecimento configurada
+**When** o Runtime o executa com uma consulta
+**Then** recupera os top-k trechos mais relevantes (similaridade vetorial) com **atribuição de fonte**, disponibilizando-os ao Bloco seguinte (FR-24).
+
+**Given** a coexistência com a memória de conversa
+**When** o Bloco recupera
+**Then** combina (ou seleciona) memória de conversa (FR-15) e conhecimento, sem expor credenciais nos trechos.
+
+### Story 6.5: Memória híbrida (dense+sparse) e perfis globais
+
+As a arquiteto,
+I want memória entre conversas com busca híbrida,
+So that o agente lembre do cliente e recupere o mais relevante.
+
+**Acceptance Criteria:**
+
+**Given** um `memory_profile` por cliente/usuário
+**When** um Bloco de Contexto recupera memória
+**Then** pode recuperar **entre conversas** do mesmo cliente (perfil persistente), isolado por Workspace (FR-29).
+
+**Given** uma consulta de memória
+**When** a recuperação executa
+**Then** combina busca **vetorial (dense)** e **lexical (sparse)** e devolve os trechos ranqueados por relevância.
+
+## Epic 7: Skills & Connectors (MCP)
+
+As ações do agente viram um catálogo de Skills plugáveis: catálogo built-in (`SKILL.md` + `TOOLS.json`) — generalizando a Ação HTTP (Story 4.5) — e Connectors que conectam servidores **MCP** de 1 clique (tools externas viram Skills), com a IA Arquiteta ciente do catálogo ao planejar. *(Update v3 — elevado ao MVP.)*
+
+**FRs:** FR-26, FR-27, FR-28 · **Spike:** SDK/runtime MCP. **Depende de:** IA Arquiteta (Epic 1), Runtime/Ação (Epic 2/4), CES (Epic 3).
+
+### Story 7.1: Catálogo de Skills built-in (loader + validação)
+
+As a desenvolvedor,
+I want um catálogo de Skills declarativas carregável,
+So that capacidades sejam adicionadas sem recompilar o Runtime.
+
+**Acceptance Criteria:**
+
+**Given** o `@robbia/skills`
+**When** carrego o catálogo do Workspace
+**Then** cada Skill é declarada por `SKILL.md` (descrição/uso) + `TOOLS.json` (schema das tools) e fica disponível por nome; a Ação HTTP (Story 4.5) é registrada como a primeira Skill built-in (FR-26, FR-22).
+
+**Given** uma invocação de Skill com argumentos
+**When** vou executar
+**Then** os argumentos são validados contra o schema da tool (Zod); inválido é rejeitado antes de executar.
+
+### Story 7.2: Bloco de Ação invoca Skills do catálogo
+
+As a arquiteto,
+I want que um Bloco de Ação execute qualquer Skill do catálogo,
+So that o agente use capacidades plugáveis de forma uniforme.
+
+**Acceptance Criteria:**
+
+**Given** um Bloco de Ação referenciando uma Skill por nome
+**When** o Runtime o executa
+**Then** resolve a Skill no catálogo, valida os argumentos e executa; o resultado fica disponível aos Blocos seguintes; falhas seguem a política de retry (FR-5) e Ações Irreversíveis respeitam o Trust Engine (FR-13/FR-19).
+
+**Given** uma Skill inexistente/indisponível
+**When** o Bloco tenta executá-la
+**Then** marca erro de capacidade ausente (não avança silenciosamente).
+
+### Story 7.3: Connectors — cliente MCP + ponte tool→Skill
+
+As a arquiteto,
+I want conectar servidores MCP com 1 clique,
+So that tools externas virem Skills sem programar integração.
+
+**Acceptance Criteria:**
+
+**Given** o `@robbia/mcp-adapters`
+**When** conecto um servidor MCP (config + credencial via CES)
+**Then** as tools expostas pelo servidor passam a aparecer como Skills no catálogo, invocáveis por Blocos de Ação como qualquer Skill (mesmo contrato de validação/erro/retry) (FR-27).
+
+**Given** um Connector conectado
+**When** o desconecto
+**Then** suas tools saem do catálogo sem quebrar Harnesses; Blocos que as usavam marcam capacidade ausente.
+
+**Given** uma tool MCP que exige credencial
+**When** é invocada
+**Then** o segredo é injetado via CES (nunca no LLM/log).
+
+### Story 7.4: IA Arquiteta ciente de Skills/capacidades
+
+As a arquiteto,
+I want que a IA Arquiteta conheça as Skills disponíveis,
+So that ela proponha só o que existe e peça esclarecimento quando faltar capacidade.
+
+**Acceptance Criteria:**
+
+**Given** o catálogo de Skills (built-in + MCP conectado)
+**When** a IA Arquiteta decompõe um pedido
+**Then** o system-prompt recebe o catálogo e ela propõe Blocos de Ação **apenas** para Skills existentes (FR-28).
+
+**Given** um pedido que exige capacidade ausente (ex.: responder de documentos sem Base de Conhecimento, ou integração não conectada)
+**When** a IA Arquiteta planeja
+**Then** **pede esclarecimento / sinaliza a lacuna** (estende FR-1 AC4) em vez de inventar um Harness que não roda.
