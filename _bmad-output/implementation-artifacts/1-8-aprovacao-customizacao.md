@@ -3,7 +3,7 @@ baseline_commit: 9657aa525bd905c4cd68c515ba308cbd75175602
 ---
 # Story 1.8: Aprovação e customização por Bloco
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -37,28 +37,28 @@ so that eu entregue o agente com a minha assinatura, com controle total.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Máquina de estado por Bloco (AC: 3) [red-green]**
-  - [ ] `apps/web/lib/block-review.ts`: tipos + reducer **puro** do estado de revisão. `BlockStatus = 'proposto' | 'aprovado' | 'modelo-trocado' | 'repensando'`. `ReviewState` = array paralelo aos Blocos (`BlockStatus[]`). Transições puras: `approve(state, i)`, `markModelChanged(state, i)`, `startRethink(state, i)`, `settleRethink(state, i)` (→ `proposto`). `isPublishable(state)` = todos `aprovado`. `approvedCount(state)`. Imutável; sem efeitos. **Aprovar** de qualquer estado → `aprovado`; **trocar modelo** de `aprovado` → `modelo-trocado`.
-  - [ ] `apps/web/lib/block-status-visuals.ts`: mapa determinístico `BlockStatus → { label (PT-BR), icon (Lucide), token }` (cor + ícone + rótulo — UX-DR16). Não reusar `AGENT_STATES` (são os 6 estados do agente, semântica diferente).
-- [ ] **Task 2 — Catálogo de Modelos (AC: 2) [red-green]**
-  - [ ] `apps/web/lib/model-catalog.ts`: catálogo **estático/puro** agrupado por `ProviderKind` — `ModelOption { id, label, cost: 'baixo'|'médio'|'alto', latency: 'baixa'|'média'|'alta' }`. Curar alguns Modelos por Provider (Claude/GPT/Gemini/Ollama/OpenRouter). Helper `modelsByProvider()` e `findModel(id)`. Dica de custo/latência é **relativa** (`[ASSUMPTION]` do EXPERIENCE — curada, não medida).
-- [ ] **Task 3 — ModelSelector acessível (AC: 2)**
-  - [ ] `apps/web/components/builder/model-selector.tsx` (`'use client'`): popover hand-rolled (sem Radix — não instalado). Gatilho = `<button aria-haspopup="listbox" aria-expanded>`; painel = `role="listbox"` com grupos por Provider (`role="group"` + `aria-label`), cada Modelo `role="option"` + `aria-selected`. **Teclado:** ↑/↓ navegam (roving tabindex ou `aria-activedescendant`), Enter/Espaço seleciona, **Esc fecha e devolve foco ao gatilho**; clicar fora fecha. Mostra `cost`/`latency` por opção (rótulo + ícone, não só cor). `onSelect(modelId)` afeta só o Bloco do contexto.
-- [ ] **Task 4 — Ações no BlockCard + indicador de estado (AC: 1, 3)**
-  - [ ] `apps/web/components/builder/block-card.tsx` (modificar — 1.7): adicionar barra de ações **Aprovar** · **Trocar modelo** (abre `ModelSelector`; **oculto se Bloco "sem LLM"**) · **Repensar**, recebidas por props (`onApprove`, `onSelectModel`, `onRethink`) para manter o card testável/burro. Exibir o **status** do Bloco (de `block-status-visuals`) — rótulo + ícone. Estado `repensando` desabilita as ações e mostra atividade. Manter read-first do conteúdo (sem editar texto livre do Bloco).
-- [ ] **Task 5 — Repensar: architect + server action (AC: 1)**
-  - [ ] `packages/architect/src/rethink.ts`: `rethinkBlock(provider, input)` → `Result<Block>`. `input = { harness, index, model?, workspace? }`. System-prompt focado: "dado este Harness e o Bloco na posição N, proponha **uma** alternativa para **esse** Bloco (mesmo Tipo, melhor abordagem), preservando os demais"; valida a saída contra `BlockSchema` (reusa `completeStructured`/repair). Exportar no barrel. +teste com `FakeProvider` (mesmo padrão de `decompose.test.ts`).
-  - [ ] `apps/web/app/(workspace)/builder/actions.ts` (modificar): server action `rethinkBlockAction(harness, index)` → `resolveArchitectConfig` + `createProviderRegistry` + `rethinkBlock`. `Result<Block>` serializável; mesmos estados de erro (`no-provider`/`no-key`) da 1.7. Segredos só no servidor.
-- [ ] **Task 6 — Integração no BuilderWorkspace (AC: 1, 2, 3)**
-  - [ ] `apps/web/components/builder/builder-workspace.tsx` (modificar — 1.7): adicionar `reviewState` (`BlockStatus[]`, inicia tudo `proposto` ao receber proposta). Handlers: **Aprovar** → `approve`; **Trocar modelo** → atualiza `proposal.blocks[i].model` (imutável) + `markModelChanged`; **Repensar** → `startRethink` → `rethinkBlockAction` → substitui `proposal.blocks[i]` + `settleRethink` (mantém os aprovados intactos). Propagar status para `BlockCard` (centro) e `BlockList` (1.7). Erro de Provider → reusa o estado "configure um Provider".
-- [ ] **Task 7 — Elegibilidade de publicação (AC: 3)**
-  - [ ] No `BuilderWorkspace`/`BuilderLayout`: barra/resumo de revisão — `approvedCount`/total ("N de M Blocos aprovados") + botão **Publicar** habilitado **só** quando `isPublishable`. **Publicação real é do Epic 3** → o botão fica desabilitado com tooltip "disponível ao publicar (Epic 3)" ou dispara um placeholder; **não** implementar publish/deploy aqui.
-- [ ] **Task 8 — Testes de lógica pura (AC: 1, 2, 3) [red-green]**
-  - [ ] `apps/web/lib/block-review.test.ts`: transições (proposto→aprovado; aprovado + troca → modelo-trocado; rethink start/settle); `isPublishable` só com todos aprovados; `approvedCount`; imutabilidade.
-  - [ ] `apps/web/lib/model-catalog.test.ts`: agrupamento por Provider; `findModel` determinístico; toda opção tem cost+latency.
-  - [ ] `packages/architect/src/rethink.test.ts`: caminho feliz (Block válido) + erro de Provider propagado (sem lançar).
-- [ ] **Task 9 — Verificação (AC: 1, 2, 3)**
-  - [ ] `bun run lint`, `bun run typecheck`, `bun run test` verdes. `bun run build` compila. *(Verificação visual manual: abrir `/builder`, gerar proposta (Provider no env), aprovar/trocar/repensar Blocos, conferir o teclado do `ModelSelector` e a elegibilidade.)*
+- [x] **Task 1 — Máquina de estado por Bloco (AC: 3) [red-green]**
+  - [x] `apps/web/lib/block-review.ts`: tipos + reducer **puro** do estado de revisão. `BlockStatus = 'proposto' | 'aprovado' | 'modelo-trocado' | 'repensando'`. `ReviewState` = array paralelo aos Blocos (`BlockStatus[]`). Transições puras: `approve(state, i)`, `markModelChanged(state, i)`, `startRethink(state, i)`, `settleRethink(state, i)` (→ `proposto`). `isPublishable(state)` = todos `aprovado`. `approvedCount(state)`. Imutável; sem efeitos. **Aprovar** de qualquer estado → `aprovado`; **trocar modelo** de `aprovado` → `modelo-trocado`.
+  - [x] `apps/web/lib/block-status-visuals.ts`: mapa determinístico `BlockStatus → { label (PT-BR), icon (Lucide), token }` (cor + ícone + rótulo — UX-DR16). Não reusar `AGENT_STATES` (são os 6 estados do agente, semântica diferente).
+- [x] **Task 2 — Catálogo de Modelos (AC: 2) [red-green]**
+  - [x] `apps/web/lib/model-catalog.ts`: catálogo **estático/puro** agrupado por `ProviderKind` — `ModelOption { id, label, cost: 'baixo'|'médio'|'alto', latency: 'baixa'|'média'|'alta' }`. Curar alguns Modelos por Provider (Claude/GPT/Gemini/Ollama/OpenRouter). Helper `modelsByProvider()` e `findModel(id)`. Dica de custo/latência é **relativa** (`[ASSUMPTION]` do EXPERIENCE — curada, não medida).
+- [x] **Task 3 — ModelSelector acessível (AC: 2)**
+  - [x] `apps/web/components/builder/model-selector.tsx` (`'use client'`): popover hand-rolled (sem Radix — não instalado). Gatilho = `<button aria-haspopup="listbox" aria-expanded>`; painel = `role="listbox"` com grupos por Provider (`role="group"` + `aria-label`), cada Modelo `role="option"` + `aria-selected`. **Teclado:** ↑/↓ navegam (roving tabindex ou `aria-activedescendant`), Enter/Espaço seleciona, **Esc fecha e devolve foco ao gatilho**; clicar fora fecha. Mostra `cost`/`latency` por opção (rótulo + ícone, não só cor). `onSelect(modelId)` afeta só o Bloco do contexto.
+- [x] **Task 4 — Ações no BlockCard + indicador de estado (AC: 1, 3)**
+  - [x] `apps/web/components/builder/block-card.tsx` (modificar — 1.7): adicionar barra de ações **Aprovar** · **Trocar modelo** (abre `ModelSelector`; **oculto se Bloco "sem LLM"**) · **Repensar**, recebidas por props (`onApprove`, `onSelectModel`, `onRethink`) para manter o card testável/burro. Exibir o **status** do Bloco (de `block-status-visuals`) — rótulo + ícone. Estado `repensando` desabilita as ações e mostra atividade. Manter read-first do conteúdo (sem editar texto livre do Bloco).
+- [x] **Task 5 — Repensar: architect + server action (AC: 1)**
+  - [x] `packages/architect/src/rethink.ts`: `rethinkBlock(provider, input)` → `Result<Block>`. `input = { harness, index, model?, workspace? }`. System-prompt focado: "dado este Harness e o Bloco na posição N, proponha **uma** alternativa para **esse** Bloco (mesmo Tipo, melhor abordagem), preservando os demais"; valida a saída contra `BlockSchema` (reusa `completeStructured`/repair). Exportar no barrel. +teste com `FakeProvider` (mesmo padrão de `decompose.test.ts`).
+  - [x] `apps/web/app/(workspace)/builder/actions.ts` (modificar): server action `rethinkBlockAction(harness, index)` → `resolveArchitectConfig` + `createProviderRegistry` + `rethinkBlock`. `Result<Block>` serializável; mesmos estados de erro (`no-provider`/`no-key`) da 1.7. Segredos só no servidor.
+- [x] **Task 6 — Integração no BuilderWorkspace (AC: 1, 2, 3)**
+  - [x] `apps/web/components/builder/builder-workspace.tsx` (modificar — 1.7): adicionar `reviewState` (`BlockStatus[]`, inicia tudo `proposto` ao receber proposta). Handlers: **Aprovar** → `approve`; **Trocar modelo** → atualiza `proposal.blocks[i].model` (imutável) + `markModelChanged`; **Repensar** → `startRethink` → `rethinkBlockAction` → substitui `proposal.blocks[i]` + `settleRethink` (mantém os aprovados intactos). Propagar status para `BlockCard` (centro) e `BlockList` (1.7). Erro de Provider → reusa o estado "configure um Provider".
+- [x] **Task 7 — Elegibilidade de publicação (AC: 3)**
+  - [x] No `BuilderWorkspace`/`BuilderLayout`: barra/resumo de revisão — `approvedCount`/total ("N de M Blocos aprovados") + botão **Publicar** habilitado **só** quando `isPublishable`. **Publicação real é do Epic 3** → o botão fica desabilitado com tooltip "disponível ao publicar (Epic 3)" ou dispara um placeholder; **não** implementar publish/deploy aqui.
+- [x] **Task 8 — Testes de lógica pura (AC: 1, 2, 3) [red-green]**
+  - [x] `apps/web/lib/block-review.test.ts`: transições (proposto→aprovado; aprovado + troca → modelo-trocado; rethink start/settle); `isPublishable` só com todos aprovados; `approvedCount`; imutabilidade.
+  - [x] `apps/web/lib/model-catalog.test.ts`: agrupamento por Provider; `findModel` determinístico; toda opção tem cost+latency.
+  - [x] `packages/architect/src/rethink.test.ts`: caminho feliz (Block válido) + erro de Provider propagado (sem lançar).
+- [x] **Task 9 — Verificação (AC: 1, 2, 3)**
+  - [x] `bun run lint`, `bun run typecheck`, `bun run test` verdes. `bun run build` compila. *(Verificação visual manual: abrir `/builder`, gerar proposta (Provider no env), aprovar/trocar/repensar Blocos, conferir o teclado do `ModelSelector` e a elegibilidade.)*
 
 ## Dev Notes
 
@@ -114,14 +114,40 @@ so that eu entregue o agente com a minha assinatura, com controle total.
 
 ### Agent Model Used
 
+claude-opus-4-8 (1M context) — BMad dev-story workflow
+
 ### Debug Log References
+
+- Lógica pura primeiro (block-review/model-catalog) + architect rethinkBlock, com testes (`bun test`) → 13 pass antes da UI.
+- `ModelSelector` acessível: padrão **listbox com roving tabindex** (opções `<button role="option">` → teclado nativo p/ Enter/Espaço; container `role="listbox"` trata setas/Esc; foco devolvido ao gatilho). Evita `useKeyWithClickEvents`/`useFocusableInteractive` (botões nativos + roving). Único `biome-ignore` necessário: `useSemanticElements` no `<div role="group">` (padrão WAI-ARIA de grupos em listbox; `<fieldset>` é p/ forms).
+- Server action: extraído helper privado `resolveProvider()` (não-exportado — `'use server'` só permite exports async) compartilhado por `proposeHarness` (1.7) e `rethinkBlockAction` (1.8).
+- `ChatComposer` (1.6→1.7) já era controlado; `BlockCard` (1.7) passou de read-only a receber handlers (Aprovar/Trocar/Repensar) + status.
+- `next build` reescreve `next-env.d.ts` → revertido.
+- Verde em estado limpo: typecheck 16/16, lint (162 arquivos, sem supressões inúteis), `bun test apps/web packages/architect` **59 pass** (15 arquivos), `next build` OK (6 rotas).
 
 ### Completion Notes List
 
+- ✅ **AC1 — Ações por Bloco:** `BlockCard` ganhou Aprovar · Trocar modelo (`ModelSelector`, **oculto se Bloco "sem LLM"**) · Repensar (handlers via props). Status do Bloco exibido (rótulo+ícone).
+- ✅ **AC2 — ModelSelector:** Modelos agrupados por Provider + dica de custo/latência (rótulo+texto, não só cor); troca afeta **só** aquele Bloco (update imutável de `proposal.blocks[i].model`); teclado completo (↑/↓/Home/End, Enter/Espaço, **Esc devolve foco ao gatilho**), ARIA `listbox`/`group`/`option`, fecha ao clicar fora.
+- ✅ **AC3 — Estado + elegibilidade:** `reviewState` (`proposto→aprovado/modelo-trocado/repensando`); trocar Modelo de um Bloco aprovado o revoga (→`modelo-trocado`); barra "N de M Blocos aprovados" + botão **Publicar** habilitado só quando `isPublishable` (todos aprovados). Status também espelhado na `BlockList`.
+- ✅ **Repensar preserva aprovados:** `rethinkBlock` (architect) gera UM Bloco validado; o `BuilderWorkspace` substitui **só** `proposal.blocks[index]` (demais intactos) e o repensado volta a `proposto`.
+- 📌 **Anti-scope:** sem publish/deploy real (botão é só elegibilidade — Epic 3); sem persistência; sem edição livre/arestas; catálogo de Modelos estático curado; sem Radix/shadcn (ModelSelector hand-rolled).
+- 📌 **Manual:** gerar/repensar com proposta real exige Provider no env (1.7); sem ele, cai no estado "configure um Provider".
+
 ### File List
+
+**apps/web (novos):**
+- `lib/block-review.ts` · `lib/block-status-visuals.ts` · `lib/model-catalog.ts` (+ `block-review.test.ts`, `model-catalog.test.ts`)
+- `components/builder/model-selector.tsx`
+
+**apps/web (modificados):**
+- `components/builder/block-card.tsx` (ações + status) · `components/builder/builder-workspace.tsx` (reviewState + handlers + barra de publicação) · `components/builder/block-list.tsx` (status) · `app/(workspace)/builder/actions.ts` (+`rethinkBlockAction` + helper) · `lib/glossary.ts` (+copy 1.8)
+
+**packages/architect (novos):** `src/rethink.ts` (+ `rethink.test.ts`) · **(modificado)** `src/index.ts` (barrel)
 
 ## Change Log
 
 | Data | Mudança |
 |------|---------|
 | 2026-06-15 | Story 1.8 criada (ready-for-dev): aprovação/customização por Bloco — ações no `BlockCard` (Aprovar/Trocar modelo/Repensar), `ModelSelector` acessível agrupado por Provider (teclado + retorno de foco), estado por Bloco (`proposto→aprovado/modelo-trocado/repensando`) e elegibilidade de publicação (todos aprovados). `rethinkBlock` adicionado a `@robbia/architect` (preserva os demais Blocos). Catálogo de Modelos estático. Constrói sobre o `BuilderWorkspace` (1.7). Anti-scope: sem publish/deploy real (Epic 3), sem persistência, sem edição livre/arestas. |
+| 2026-06-15 | Story 1.8 implementada: `block-review` (máquina de estado pura) + `block-status-visuals` + `model-catalog`; `ModelSelector` (listbox roving-tabindex acessível); `BlockCard` com ações + status; `rethinkBlock` no architect + `rethinkBlockAction`; `BuilderWorkspace` com reviewState/handlers/barra de publicação; `BlockList` com status. +diversos testes (59 total web+architect). typecheck/lint/test/build verdes. **Status → review.** Fecha o fluxo build-time do Épico 1. |

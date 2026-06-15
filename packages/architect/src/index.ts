@@ -1,4 +1,5 @@
 export * from './decompose'
+export * from './rethink'
 export * from './schema'
 export * from './system-prompt'
 export * from './types'
