@@ -3,7 +3,7 @@ baseline_commit: abe729b03be60b7bc9866c33972cdd6a77d8e810
 ---
 # Story 1.3: Provider Abstraction multi-LLM com normalização de schema
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -61,7 +61,7 @@ so that eu possa escolher o Modelo de IA por Bloco sem lock-in, sem que a troca 
 - [ ] **Task 7 — Os 5 adaptadores (AC: 1)**
   - [x] `src/adapters/{claude,gpt,gemini,ollama,openrouter}.ts`, cada um `class XxxProvider implements LLMProvider`.
   - [x] **Cliente injetável** por adaptador (factory/DI) para permitir mock nos testes sem rede real.
-  - [x] **Structured output por Provider:** Claude = tool use forçado (ou structured outputs); GPT/OpenRouter = `response_format` json_schema; Gemini = `responseSchema`/`responseMimeType: application/json`; Ollama = `format: 'json'` (ou format=schema). Onde o Provider não suportar nativamente, cair no caminho `complete` + `normalize`.
+  - [~] **Structured output por Provider — DEFERIDO (parcial):** AC2 é atendida pelo caminho uniforme `complete` + `normalize`/repair em TODOS os Providers. O modo NATIVO por Provider (Claude tool-use; GPT/OpenRouter `response_format` json_schema; Gemini `responseSchema`) **não** foi implementado — hoje só há o flag genérico `jsonMode` (`response_format: json_object` no compat-OpenAI, `responseMimeType: application/json` no Gemini, `format: 'json'` no Ollama). Rastreado como enhancement futuro (ver Completion Notes / deferred-work). *Marcado `[~]` para o ledger refletir o código.*
   - [x] Adaptador Claude implementado com a **API Messages** padrão do `@anthropic-ai/sdk`, **model-agnostic** (o `model` vem da config/`model_configs`, não chumbado) e **sem segredos** no código. *Variância honesta: a skill `claude-api` NÃO foi consultada nesta sessão (economia de contexto); structured output usa o caminho uniforme complete + normalize (não tool-use nativo). Consultar `claude-api` ao adicionar tool-use/structured-output nativo do Claude — ver Completion Notes.*
   - [x] `src/index.ts`: barrel exportando interface, tipos, registry, normalize e adaptadores.
 - [ ] **Task 8 — Testes (AC: 1,2,3,4) [red-green]**
@@ -158,3 +158,4 @@ claude-opus-4-8 (1M context) — BMad dev-story workflow
 |------|---------|
 | 2026-06-14 | Story 1.3 criada (ready-for-dev): Provider Abstraction multi-LLM (5 adaptadores), normalização Zod + repair, registry/roteamento, mapeamento de erro com retry central. |
 | 2026-06-14 | Story 1.3 implementada: `@robbia/provider` com interface `LLMProvider`, `BaseProvider` (retry+erro+structured), 5 adaptadores (DI), `normalize` (repair), registry + `routeProvider`. +15 testes (35 total). Lint/typecheck/test verdes. Structured output nativo por Provider e integração real ficam como enhancement. Status → review. |
+| 2026-06-15 | Code review (épico 1) resolvido: **HIGH** — OpenRouter não lança mais sem API key (cliente lazy em todos os adaptadores → throw vira `Result` err, AC4); `foldSystemMessages` no `BaseProvider` unifica `role:'system'` (AC3); `mapProviderError` tipado; `extractJson` com span balanceado. Testes: `build()` real dos 5 kinds, Ollama/OpenRouter, retry transitório, repair re-prompt (15→28 no pacote). Task 7 (structured output nativo) marcada deferida. Commit `5799ecd`. Lint/typecheck/test/build verdes. **Status → done.** |

@@ -2,12 +2,38 @@ import { err, ok, type Result } from '@robbia/shared'
 import type { z } from 'zod'
 import type { CompletionResult, LLMRequest, StructuredRequest } from './types'
 
-/** Extrai o JSON da saída do modelo (tolerante a cercas ```json e prosa ao redor). */
+/**
+ * Extrai o JSON da saída do modelo (tolerante a cercas ```json e prosa ANTES e DEPOIS).
+ * Varre do primeiro `[`/`{` até o fecho correspondente, respeitando strings e escapes,
+ * de modo que prosa após o valor (ex.: `{...} Espero ter ajudado!`) não quebra o parse.
+ */
 export function extractJson(raw: string): string | null {
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
   const candidate = (fenced?.[1] ?? raw).trim()
   const start = candidate.search(/[[{]/)
   if (start === -1) return null
+
+  const open = candidate[start]
+  const close = open === '{' ? '}' : ']'
+  let depth = 0
+  let inString = false
+  let escaped = false
+  for (let i = start; i < candidate.length; i++) {
+    const ch = candidate[i]
+    if (inString) {
+      if (escaped) escaped = false
+      else if (ch === '\\') escaped = true
+      else if (ch === '"') inString = false
+      continue
+    }
+    if (ch === '"') inString = true
+    else if (ch === open) depth++
+    else if (ch === close) {
+      depth--
+      if (depth === 0) return candidate.slice(start, i + 1)
+    }
+  }
+  // Sem fecho correspondente (truncado): devolve do início ao fim para o parse reportar o erro.
   return candidate.slice(start).trim()
 }
 

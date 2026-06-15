@@ -3,7 +3,46 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { MascotCore } from '@/components/ui/mascot-core'
 import { StateBadge } from '@/components/ui/state-badge'
 import { AGENT_STATE_KEYS } from '@/lib/agent-state'
-import { blockTypeVisual } from '@/lib/block-types'
+import { type BlockColorToken, blockTypeVisual } from '@/lib/block-types'
+
+/** Borda por Tipo de Bloco (DESIGN.md) — ciano reservado a Gatilho/Ação. */
+const BORDER_CLASS: Record<BlockColorToken, string> = {
+  cyan: 'border-cyan',
+  slate: 'border-slate',
+  steel: 'border-steel',
+  graphite: 'border-graphite',
+}
+
+const PALETTE: { group: string; swatches: { label: string; className: string }[] }[] = [
+  {
+    group: 'Marca',
+    swatches: [
+      { label: 'graphite', className: 'bg-graphite' },
+      { label: 'charcoal', className: 'bg-charcoal' },
+      { label: 'cyan', className: 'bg-cyan' },
+    ],
+  },
+  {
+    group: 'Apoio',
+    swatches: [
+      { label: 'slate', className: 'bg-slate' },
+      { label: 'steel', className: 'bg-steel' },
+      { label: 'cyan-light', className: 'bg-cyan-light' },
+      { label: 'mist', className: 'bg-mist' },
+    ],
+  },
+  {
+    group: 'Estado',
+    swatches: [
+      { label: 'idle', className: 'bg-state-idle' },
+      { label: 'thinking', className: 'bg-state-thinking' },
+      { label: 'active', className: 'bg-state-active' },
+      { label: 'waiting', className: 'bg-state-waiting' },
+      { label: 'done', className: 'bg-state-done' },
+      { label: 'error', className: 'bg-state-error' },
+    ],
+  },
+]
 
 /** Vitrine do design system — apoio à verificação visual manual (não é surface de produto). */
 export default function DesignSystemPage() {
@@ -13,6 +52,26 @@ export default function DesignSystemPage() {
         <h1 className="text-2xl font-medium">RobbIA — Design System</h1>
         <ThemeToggle />
       </header>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Paleta</h2>
+        {PALETTE.map(({ group, swatches }) => (
+          <div key={group} className="flex flex-col gap-1">
+            <span className="text-xs text-fg-muted">{group}</span>
+            <div className="flex flex-wrap gap-2">
+              {swatches.map(({ label, className }) => (
+                <div key={label} className="flex flex-col items-center gap-1">
+                  <span
+                    className={`size-10 rounded border border-border ${className}`}
+                    aria-hidden
+                  />
+                  <span className="font-mono text-[11px] text-fg-muted">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-medium">Estados do agente</h2>
@@ -37,7 +96,7 @@ export default function DesignSystemPage() {
             return (
               <li
                 key={type}
-                className="flex items-center gap-2 rounded-md border-l-4 border-border bg-surface p-3"
+                className={`flex items-center gap-2 rounded-md border-l-4 bg-surface p-3 ${BORDER_CLASS[v.borderColorToken]}`}
               >
                 <Icon size={18} aria-hidden />
                 <span className="font-mono text-sm">{type}</span>

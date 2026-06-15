@@ -6,19 +6,27 @@ import { openAiChat } from './openai-compat'
 /** Adaptador OpenAI GPT (Provider direto — frontier). */
 export class GptProvider extends BaseProvider {
   readonly kind: ProviderKind = 'gpt'
-  private readonly client: OpenAI
+  private readonly config: ProviderConfig
+  private readonly injected?: OpenAI
+  private cached?: OpenAI
 
   constructor(config: ProviderConfig = {}, client?: OpenAI) {
     super()
-    this.client =
-      client ??
-      new OpenAI({
-        ...(config.apiKey ? { apiKey: config.apiKey } : {}),
-        ...(config.baseURL ? { baseURL: config.baseURL } : {}),
-      })
+    this.config = config
+    this.injected = client
   }
 
-  protected call(req: LLMRequest): Promise<CompletionResult> {
-    return openAiChat(this.client, req, this.kind)
+  /** Cliente lazy: um throw do SDK (sem credencial) cai no try/catch de `complete`. */
+  private getClient(): OpenAI {
+    if (this.injected) return this.injected
+    this.cached ??= new OpenAI({
+      ...(this.config.apiKey ? { apiKey: this.config.apiKey } : {}),
+      ...(this.config.baseURL ? { baseURL: this.config.baseURL } : {}),
+    })
+    return this.cached
+  }
+
+  protected async call(req: LLMRequest): Promise<CompletionResult> {
+    return openAiChat(this.getClient(), req, this.kind)
   }
 }

@@ -34,11 +34,16 @@ describe('decompose', () => {
     expect(res.ok && res.data.kind).toBe('clarification')
   })
 
-  it('erro permanente de Provider é propagado (sem lançar)', async () => {
+  it('erro permanente de Provider é propagado com a identidade do erro (sem lançar)', async () => {
     const provider = new FakeProvider('claude', () => {
       throw { status: 401, message: 'invalid api key' }
     })
     const res = await decompose(provider, { description: 'x', model: 'm' })
     expect(res.ok).toBe(false)
+    // não basta "algo falhou": o erro do Provider deve ser surfado fielmente (sem repair).
+    if (!res.ok) {
+      expect(res.error.code).toBe('PROVIDER_HTTP_401')
+      expect(res.error.retriable).toBe(false)
+    }
   })
 })

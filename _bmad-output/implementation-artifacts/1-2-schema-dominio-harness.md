@@ -3,7 +3,7 @@ baseline_commit: NO_VCS
 ---
 # Story 1.2: Schema de domínio do Harness (Drizzle)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -145,3 +145,4 @@ claude-opus-4-8 (1M context) — BMad dev-story workflow
 |------|---------|
 | 2026-06-14 | Story 1.2 criada (ready-for-dev): schema de domínio Harness/Block/Provider/ModelConfig (Drizzle) + schemas Zod em @robbia/shared. |
 | 2026-06-14 | Story 1.2 implementada: 4 tabelas Drizzle (UUID v7, enum block_type, FKs, índices, timestamptz), schemas Zod (fonte única dos Tipos de Bloco), migration `0000_*` gerada, +5 testes (20 pass total). Lint/typecheck/test verdes; aplicação live da migration pendente (Docker offline). Status → review. |
+| 2026-06-15 | Code review (épico 1) resolvido: colunas jsonb (`config`/`depends_on`/`params`) anotadas com `.$type<>()` (fim do `unknown`) e `updated_at` com `$onUpdateFn` nas 4 tabelas (mudanças TS-only, sem alterar a migration). Commit `5799ecd`. Lint/typecheck/test/build verdes. **Status → done.** |
