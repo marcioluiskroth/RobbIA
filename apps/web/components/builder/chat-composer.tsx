@@ -2,30 +2,32 @@
 
 import { Send } from 'lucide-react'
 import { type KeyboardEvent, useRef, useState } from 'react'
-import {
-  appendTurn,
-  type ConversationState,
-  emptyConversation,
-  isSendable,
-} from '@/lib/conversation'
+import type { ConversationTurn } from '@/lib/conversation'
+import { isSendable } from '@/lib/conversation'
 import { COPY } from '@/lib/glossary'
 import { cn } from '@/lib/utils'
 
 /**
  * Entrada de NL com refino contínuo na mesma conversa (FR-14, UX-DR3). Enter envia,
  * Shift+Enter quebra linha; entrada vazia/whitespace não envia; limpa e refoca após enviar.
- * Sem geração de resposta da IA Arquiteta nesta story — só registra o turno do arquiteto.
+ * COMPONENTE CONTROLADO: a lista de turnos e o envio vivem no `BuilderWorkspace` (que
+ * orquestra a geração); aqui fica só o input local e os atalhos de teclado.
  */
-export function ChatComposer() {
-  const [conversation, setConversation] = useState<ConversationState>(emptyConversation)
+export function ChatComposer({
+  turns,
+  onSubmit,
+  busy = false,
+}: {
+  turns: readonly ConversationTurn[]
+  onSubmit: (text: string) => void
+  busy?: boolean
+}) {
   const [text, setText] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   function send() {
-    if (!isSendable(text)) return
-    setConversation((current) =>
-      appendTurn(current, { id: crypto.randomUUID(), role: 'user', text: text.trim() }),
-    )
+    if (busy || !isSendable(text)) return
+    onSubmit(text.trim())
     setText('')
     textareaRef.current?.focus()
   }
@@ -43,7 +45,7 @@ export function ChatComposer() {
         aria-label={COPY.conversationLabel}
         className="flex flex-1 flex-col gap-2 overflow-y-auto"
       >
-        {conversation.turns.map((turn) => (
+        {turns.map((turn) => (
           <li
             key={turn.id}
             className={cn(
@@ -70,7 +72,7 @@ export function ChatComposer() {
         <button
           type="button"
           onClick={send}
-          disabled={!isSendable(text)}
+          disabled={busy || !isSendable(text)}
           aria-label={COPY.composerSend}
           className="rounded-md bg-fg p-2 text-bg hover:opacity-90 disabled:opacity-40"
         >

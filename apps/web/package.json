@@ -10,7 +10,10 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@robbia/architect": "workspace:*",
+    "@robbia/provider": "workspace:*",
     "@robbia/shared": "workspace:*",
+    "@xyflow/react": "^12.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.18.0",
