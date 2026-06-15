@@ -3,7 +3,7 @@ baseline_commit: 7de57aa03377c84eca9119af4d06b31448d38b59
 ---
 # Story 1.4: IA Arquiteta — decomposição de linguagem natural em Harness
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -139,3 +139,4 @@ claude-opus-4-8 (1M context) — BMad dev-story workflow
 |------|---------|
 | 2026-06-14 | Story 1.4 criada (ready-for-dev): IA Arquiteta NL→Harness (system-prompt, decompose via completeStructured, schema union harness|clarification, validador semântico). Consome @robbia/provider + HarnessSchema. |
 | 2026-06-14 | Story 1.4 implementada: `@robbia/architect` (NL→Harness via `completeStructured`, union `harness|clarification`, system-prompt com RPA-sem-API + recursos conectados, validador semântico). +11 testes (46 total). Lint/typecheck/test verdes. Modelo padrão = spike diferido. Status → review. |
+| 2026-06-15 | Code review (épico 1) resolvido: testes reforçados — regra RPA-sem-API agora assere a frase real (não só a palavra 'rpa' da enumeração), AC3 assere a instrução "Gatilho/Ação compatíveis", e a propagação de erro de Provider confere a identidade (`PROVIDER_HTTP_401`). Commit `5799ecd`. Lint/typecheck/test/build verdes. **Status → done.** |

@@ -3,7 +3,7 @@ baseline_commit: abe729b03be60b7bc9866c33972cdd6a77d8e810
 ---
 # Story 1.3: Provider Abstraction multi-LLM com normalização de schema
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -158,3 +158,4 @@ claude-opus-4-8 (1M context) — BMad dev-story workflow
 |------|---------|
 | 2026-06-14 | Story 1.3 criada (ready-for-dev): Provider Abstraction multi-LLM (5 adaptadores), normalização Zod + repair, registry/roteamento, mapeamento de erro com retry central. |
 | 2026-06-14 | Story 1.3 implementada: `@robbia/provider` com interface `LLMProvider`, `BaseProvider` (retry+erro+structured), 5 adaptadores (DI), `normalize` (repair), registry + `routeProvider`. +15 testes (35 total). Lint/typecheck/test verdes. Structured output nativo por Provider e integração real ficam como enhancement. Status → review. |
+| 2026-06-15 | Code review (épico 1) resolvido: **HIGH** — OpenRouter não lança mais sem API key (cliente lazy em todos os adaptadores → throw vira `Result` err, AC4); `foldSystemMessages` no `BaseProvider` unifica `role:'system'` (AC3); `mapProviderError` tipado; `extractJson` com span balanceado. Testes: `build()` real dos 5 kinds, Ollama/OpenRouter, retry transitório, repair re-prompt (15→28 no pacote). Task 7 (structured output nativo) marcada deferida. Commit `5799ecd`. Lint/typecheck/test/build verdes. **Status → done.** |
